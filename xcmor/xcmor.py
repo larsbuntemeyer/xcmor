@@ -2,9 +2,9 @@ import collections
 from datetime import date
 from warnings import warn
 
+import cf_xarray as cfxr  # noqa
+import numpy as np
 from xarray import DataArray
-
-# from .utils import filter_table_by_value
 
 
 def cmorize(
@@ -19,6 +19,8 @@ def cmorize(
 
     ds = ds.copy()
 
+    ds = ds.cf.guess_coord_axis(verbose=True)
+
     coords_table = coords_table.get("axis_entry") or coords_table
 
     if mapping is None:
@@ -31,10 +33,7 @@ def cmorize(
 
     ds = add_variable_attrs(ds, mip_table["variable_entry"] or mip_table)
 
-    for var in ds.data_vars:
-        dims = ds[var].attrs.get("dimensions")
-        dims = {d: coords_table[d] for d in dims.split()}
-        ds = apply_dimensions(ds, dims, coords_table)
+    ds = apply_variable_dimensions(ds, coords_table)
 
     if dataset_table:
         ds = update_global_attributes(ds, dataset_table)
@@ -64,29 +63,68 @@ def add_variable_attrs(ds, mip_table):
     return ds
 
 
+def apply_variable_dimensions(ds, coords_table):
+    for var in ds.data_vars:
+        dims = ds[var].attrs.get("dimensions")
+        dims = {d: coords_table[d] for d in dims.split()}
+        ds = apply_dimensions(ds, dims, coords_table)
+        # add coordinates attribute
+        ds[var].attrs["coordinates"] = " ".join(
+            [d["out_name"] for d in dims.values() if d["out_name"] not in ds.indexes]
+        )  #
+
+    return ds
+
+
 def apply_dimensions(da, dims, coords_table):
     """apply dimensions from coordinates table"""
 
+    print(da.cf.coords.keys())
+    print(dims.keys())
     for d, v in dims.items():
+        print(d)
+        print(bool(v["requested"]))
         if d in da.coords:
             da = add_coordinate(da, d, v)
             continue
-        keys = ["out_name", "standard_name"]
+
+        keys = ["out_name", "standard_name", "axis"]
         for k in keys:
-            if v[k] in da.coords:
+            if v[k] in da.cf.coords or v[k] in da.coords:
+                print(f"found {v[k]} by {k}")
                 da = add_coordinate(da, v[k], v)
                 break
+
+        if v["out_name"] not in da.coords:
+            warn(f"adding coordinate: {d}")
+            value = float(v["value"])
+            dtype = v["type"]
+            coord = DataArray(value).astype(dtype)
+            da = da.assign_coords({v["out_name"]: coord})
+            da.coords[v["out_name"]].attrs = v
 
     return da
 
 
 def add_coordinate(da, d, axis_entry):
+    print(f"coordinate: {d}")
     out_name = axis_entry["out_name"]
-    da = da.rename({d: out_name})
+    da = da.cf.rename({d: out_name})
     da.coords[out_name].attrs = axis_entry
     dims = da.coords[out_name].dims
     if len(dims) == 1:
         da = da.swap_dims({dims[0]: out_name})
+
+    dtype = axis_entry.get("type")
+    if type:
+        da[out_name] = da[out_name].astype(dtype)
+
+    requested = axis_entry.get("requested")
+    if requested:
+        requested = list(map(float, requested))
+        print(f"requested: {requested}")
+        print(f"values: {da[out_name].values}")
+        assert np.allclose(da[out_name].values, requested)
 
     return da
 
