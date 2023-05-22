@@ -1,3 +1,3 @@
 # xcmor
 
-Lazy cmorization with xarray.
+Lazy in-memory cmorization with xarray.
