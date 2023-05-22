@@ -37,7 +37,7 @@ def cmorize(
         ds = apply_dimensions(ds, dims, coords_table)
 
     if dataset_table:
-        ds = add_global_attributes(ds, dataset_table)
+        ds = update_global_attributes(ds, dataset_table)
 
     ds = add_version_attribute(ds)
 
@@ -59,6 +59,7 @@ def add_variable_attrs(ds, mip_table):
 
     for v in ds.data_vars:
         ds[v].attrs = mip_table[v]
+        ds.attrs["variable_id"] = v
 
     return ds
 
@@ -98,8 +99,8 @@ def add_version_attribute(ds):
     return ds
 
 
-def add_global_attributes(ds, dataset_table):
-    ds.attrs = {k: v for k, v in dataset_table.items() if not k.startswith("#")}
+def update_global_attributes(ds, dataset_table):
+    ds.attrs.update({k: v for k, v in dataset_table.items() if not k.startswith("#")})
 
     return ds
 
