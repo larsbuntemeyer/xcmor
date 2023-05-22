@@ -19,6 +19,8 @@ def cmorize(
 
     ds = ds.copy()
 
+    coords_table = coords_table.get("axis_entry") or coords_table
+
     if mapping is None:
         mapping = {}
 
@@ -30,9 +32,9 @@ def cmorize(
     ds = add_variable_attrs(ds, mip_table["variable_entry"] or mip_table)
 
     for var in ds.data_vars:
-        da = apply_dimensions(ds[var], coords_table)
-        ds[var] = da
-        ds = ds.assign_coords(da.coords)
+        dims = ds[var].attrs.get("dimensions")
+        dims = {d: coords_table[d] for d in dims.split()}
+        ds = apply_dimensions(ds, dims, coords_table)
 
     if dataset_table:
         ds = add_global_attributes(ds, dataset_table)
@@ -61,26 +63,29 @@ def add_variable_attrs(ds, mip_table):
     return ds
 
 
-def apply_dimensions(da, coords_table):
+def apply_dimensions(da, dims, coords_table):
     """apply dimensions from coordinates table"""
-    da = da.copy()
-
-    coords_table = coords_table.get("axis_entry") or coords_table
-
-    dims = da.attrs.get("dimensions")
-    print(dims)
-
-    if dims:
-        dims = {d: coords_table[d] for d in dims.split()}
 
     for d, v in dims.items():
+        if d in da.coords:
+            da = add_coordinate(da, d, v)
+            continue
         keys = ["out_name", "standard_name"]
-        out_name = v["out_name"]
         for k in keys:
             if v[k] in da.coords:
-                da.coords[v[k]].attrs = v
-                da = da.rename({v[k]: out_name})
+                da = add_coordinate(da, v[k], v)
                 break
+
+    return da
+
+
+def add_coordinate(da, d, axis_entry):
+    out_name = axis_entry["out_name"]
+    da = da.rename({d: out_name})
+    da.coords[out_name].attrs = axis_entry
+    dims = da.coords[out_name].dims
+    if len(dims) == 1:
+        da = da.swap_dims({dims[0]: out_name})
 
     return da
 
@@ -105,8 +110,12 @@ def check_cv(ds, cv_table):
     req_attrs = cv["required_global_attributes"]
 
     for attr in req_attrs:
-        if attr not in ds.attrs:
+        cv_values = cv.get(attr)
+        v = ds.attrs.get(attr)
+        if not v:
             warn(f"{attr} not found")
+        elif cv_values and v not in list(cv_values):
+            warn(f"value '{v}' for '{attr}' not in {list(cv_values)}")
 
 
 def add_derived_attributes(ds, cv_table):
@@ -115,13 +124,10 @@ def add_derived_attributes(ds, cv_table):
     req_attrs = cv["required_global_attributes"]
 
     for attr in req_attrs:
-        print(f">>>>>> {attr}")
         actual_value = ds.attrs.get(attr)
         cv_values = cv.get(attr)
         if isinstance(cv_values, dict) and actual_value in cv_values.keys():
             ds = add_derived_attribute(ds, attr, cv_values.get(actual_value))
-        # elif isinstance(cv_values )
-        # check_cv_attr(attr, actual_value, cv_values)
 
     return ds
 
@@ -143,12 +149,17 @@ def add_derived_attribute(ds, attr, cv_values):
 
     for k, v in cv_values.items():
         actual_value = ds.attrs.get(k)
-        print(f"actual:::::: {actual_value}")
         if isinstance(v, list) and actual_value:
             if actual_value not in v:
                 warn(f"actual_value '{actual_value}' for {k} not in {v}")
         elif isinstance(v, str) and actual_value is None:
             warn(f"for attribute '{k}' --> add value '{v}'")
+            ds.attrs[k] = v
+        elif isinstance(v, str) and actual_value:
+            if actual_value != v:
+                warn(
+                    f"attribute '{k}' is set to '{actual_value}' but CV has '{v}' derived from '{attr}'!"
+                )
             ds.attrs[k] = v
 
     return ds
@@ -164,6 +175,9 @@ def add_header_attributes(ds, header, cv_table=None):
         ]
     else:
         header_attrs = default_header_attrs
+
+    if "table_id" in header_attrs:
+        header["table_id"] = header["table_id"].split()[-1]
 
     ds.attrs.update({k: header[k] for k in header_attrs})
 
