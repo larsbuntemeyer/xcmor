@@ -59,6 +59,8 @@ def add_variable_attrs(ds, mip_table):
     for v in ds.data_vars:
         ds[v].attrs = mip_table[v]
         ds.attrs["variable_id"] = v
+        if mip_table[v].get("frequency"):
+            ds.attrs["frequency"] = mip_table[v].get("frequency")
 
     return ds
 
@@ -69,10 +71,12 @@ def apply_variable_dimensions(ds, coords_table):
         dims = {d: coords_table[d] for d in dims.split()}
         ds = apply_dimensions(ds, dims, coords_table)
         # add coordinates attribute
-        ds[var].attrs["coordinates"] = " ".join(
+        coordinates = " ".join(
             [d["out_name"] for d in dims.values() if d["out_name"] not in ds.indexes]
-        )  #
-
+        )
+        print(f"coordinates: {coordinates}")
+        if coordinates:
+            ds[var].attrs["coordinates"] = coordinates
     return ds
 
 
