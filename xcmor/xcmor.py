@@ -6,6 +6,8 @@ import cf_xarray as cfxr  # noqa
 import numpy as np
 from xarray import DataArray
 
+from .mapping import dtype_map
+
 
 def cmorize(
     ds,
@@ -29,9 +31,11 @@ def cmorize(
     if isinstance(ds, DataArray):
         ds = ds.to_dataset()
 
-    ds = ds.rename({v: mapping.get(v) for v in ds})
+    ds = ds.rename({v: (mapping.get(v) or v) for v in ds})
 
-    ds = add_variable_attrs(ds, mip_table["variable_entry"] or mip_table)
+    ds = add_variable_attrs(ds, mip_table.get("variable_entry") or mip_table)
+
+    ds = apply_variable_attrs(ds, mip_table.get("variable_entry") or mip_table)
 
     ds = apply_variable_dimensions(ds, coords_table)
 
@@ -65,6 +69,30 @@ def add_variable_attrs(ds, mip_table):
     return ds
 
 
+def apply_variable_attrs(ds, mip_table):
+    """apply variable attributes"""
+
+    for v in ds.data_vars:
+        attrs = ds[v].attrs
+        ds[v] = ds[v].astype(dtype_map[attrs["type"]])
+        del ds[v].attrs["type"]
+
+        ds.rename({v: attrs.get("out_name") or v})
+        del ds[v].attrs["out_name"]
+
+        valid_min, valid_max = attrs.get("valid_min"), attrs.get("valid_max")
+        del ds[v].attrs["valid_min"]
+        del ds[v].attrs["valid_max"]
+        if valid_min:
+            assert ds[v].min() >= valid_min
+
+        if valid_max:
+            assert ds[v].max() <= valid_max
+            del ds[v].attrs["valid_max"]
+
+    return ds
+
+
 def apply_variable_dimensions(ds, coords_table):
     for var in ds.data_vars:
         dims = ds[var].attrs.get("dimensions")
@@ -83,11 +111,7 @@ def apply_variable_dimensions(ds, coords_table):
 def apply_dimensions(da, dims, coords_table):
     """apply dimensions from coordinates table"""
 
-    print(da.cf.coords.keys())
-    print(dims.keys())
     for d, v in dims.items():
-        print(d)
-        print(bool(v["requested"]))
         if d in da.coords:
             da = add_coordinate(da, d, v)
             continue
@@ -95,7 +119,7 @@ def apply_dimensions(da, dims, coords_table):
         keys = ["out_name", "standard_name", "axis"]
         for k in keys:
             if v[k] in da.cf.coords or v[k] in da.coords:
-                print(f"found {v[k]} by {k}")
+                # print(f"found {v[k]} by {k}")
                 da = add_coordinate(da, v[k], v)
                 break
 
@@ -111,7 +135,6 @@ def apply_dimensions(da, dims, coords_table):
 
 
 def add_coordinate(da, d, axis_entry):
-    print(f"coordinate: {d}")
     out_name = axis_entry["out_name"]
     da = da.cf.rename({d: out_name})
     da.coords[out_name].attrs = axis_entry
@@ -126,8 +149,8 @@ def add_coordinate(da, d, axis_entry):
     requested = axis_entry.get("requested")
     if requested:
         requested = list(map(float, requested))
-        print(f"requested: {requested}")
-        print(f"values: {da[out_name].values}")
+        # print(f"requested: {requested}")
+        # print(f"values: {da[out_name].values}")
         assert np.allclose(da[out_name].values, requested)
 
     return da
