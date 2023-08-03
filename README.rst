@@ -4,6 +4,9 @@ xcmor
    :target: https://github.com/larsbuntemeyer/xcmor/actions/workflows/ci.yaml
    :alt: CI
 
+.. image:: https://codecov.io/gh/larsbuntemeyer/xcmor/branch/main/graph/badge.svg?token=YW7PBUTMZ6 
+   :target: https://codecov.io/gh/larsbuntemeyer/xcmor
+
 .. image:: https://results.pre-commit.ci/badge/github/larsbuntemeyer/xcmor/main.svg
    :target: https://results.pre-commit.ci/latest/github/larsbuntemeyer/xcmor/main
    :alt: pre-commit.ci status
