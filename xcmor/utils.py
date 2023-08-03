@@ -42,6 +42,7 @@ def read_json(filename):
 
 
 def write_json(filename, data):
+    """write (temporary) json file"""
     with open(filename, "w") as fp:
         json.dump(data, fp, indent=4)
     return filename
