@@ -11,3 +11,4 @@ dependencies:
   - pandas
   - pooch
   - xarray
+  - cf_xarray

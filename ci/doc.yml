@@ -8,6 +8,7 @@ dependencies:
   - netcdf4
   - pooch
   - xarray
+  - cf_xarray
   - sphinx
   - sphinx-copybutton
   - numpydoc
