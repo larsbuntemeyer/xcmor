@@ -17,7 +17,37 @@ def cmorize(
     cv_table=None,
     mapping=None,
 ):
-    """Lazy cmorization"""
+    """Lazy cmorization.
+
+    Cmorizes an xarray Dataset or DataArray object. The cmorizations tries
+    to follow the approach of the original `cmor <https://github.com/PCMDI/cmor>`_
+    library in adding, manipulating and interpreting dataseta attributes and
+    cmor table vocabulary.
+
+    Parameters
+    ----------
+    ds : DataArray, Dataset
+        Dataset that should be cmorized.
+    mip_table : dict, str
+        The MIP table, can either be a dictionary or a path to a cmor table
+        in json format.
+    coords_table : dict, str
+        The cmor coordinates table, can either be a dictionary or a path to a cmor table
+        in json format.
+    dataset_table : dict, str
+        The input dataset cmor table, can either be a dictionary or a path to a cmor table
+        in json format.
+    cv_table: dict, str
+        The controlled vocabulary table, can either be a dictionary or a path to a cmor table
+        in json format.
+    mapping: dict
+        The mapping table mapping input variable names to cmor table axis entry keys.
+
+    Returns
+    -------
+    Cmorized Dataset.
+
+    """
 
     ds = ds.copy()
 
