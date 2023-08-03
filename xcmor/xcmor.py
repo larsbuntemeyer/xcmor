@@ -53,7 +53,10 @@ def cmorize(
 
     ds = ds.cf.guess_coord_axis(verbose=True)
 
-    coords_table = coords_table.get("axis_entry") or coords_table
+    if coords_table is None:
+        coords_table = {}
+    else:
+        coords_table = coords_table.get("axis_entry") or coords_table
 
     if mapping is None:
         mapping = {}
@@ -67,7 +70,8 @@ def cmorize(
 
     ds = interpret_variable_attrs(ds, mip_table.get("variable_entry") or mip_table)
 
-    ds = interpret_variable_dimensions(ds, coords_table)
+    if coords_table:
+        ds = interpret_variable_dimensions(ds, coords_table)
 
     if dataset_table:
         ds = update_global_attributes(ds, dataset_table)
