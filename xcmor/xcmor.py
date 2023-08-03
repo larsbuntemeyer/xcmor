@@ -35,9 +35,9 @@ def cmorize(
 
     ds = add_variable_attrs(ds, mip_table.get("variable_entry") or mip_table)
 
-    ds = apply_variable_attrs(ds, mip_table.get("variable_entry") or mip_table)
+    ds = interpret_variable_attrs(ds, mip_table.get("variable_entry") or mip_table)
 
-    ds = apply_variable_dimensions(ds, coords_table)
+    ds = interpret_variable_dimensions(ds, coords_table)
 
     if dataset_table:
         ds = update_global_attributes(ds, dataset_table)
@@ -65,12 +65,23 @@ def add_variable_attrs(ds, mip_table):
         ds.attrs["variable_id"] = v
         if mip_table[v].get("frequency"):
             ds.attrs["frequency"] = mip_table[v].get("frequency")
+            del ds[v].attrs["frequency"]
+        if mip_table[v].get("modeling_realm"):
+            ds.attrs["realm"] = mip_table[v].get("modeling_realm")
+            del ds[v].attrs["modeling_realm"]
 
     return ds
 
 
-def apply_variable_attrs(ds, mip_table):
-    """apply variable attributes"""
+def interpret_variable_attrs(ds, mip_table):
+    """Apply variable attributes found in the mip table.
+
+    This will interpret attributes found in the mip table, e.g.,
+    valid_min, valid_max, convert dtypes, etc...
+    Once attributes were interpreted they are removed from the
+    variables attributes dictionary.
+
+    """
 
     for v in ds.data_vars:
         attrs = ds[v].attrs
@@ -93,34 +104,44 @@ def apply_variable_attrs(ds, mip_table):
     return ds
 
 
-def apply_variable_dimensions(ds, coords_table):
+def interpret_variable_dimensions(ds, coords_table):
+    """Interpret variable dimensions attribute.
+
+    This will look up the dimensions defined for variables
+    in the mip table and update coordinates acoording to
+    meta data in the coordinates table.
+
+    """
     for var in ds.data_vars:
         dims = ds[var].attrs.get("dimensions")
         dims = {d: coords_table[d] for d in dims.split()}
-        ds = apply_dimensions(ds, dims, coords_table)
+        ds = _apply_dimensions(ds, dims, coords_table)
         # add coordinates attribute
         coordinates = " ".join(
             [d["out_name"] for d in dims.values() if d["out_name"] not in ds.indexes]
         )
-        print(f"coordinates: {coordinates}")
+
         if coordinates:
+            print(f"coordinates: {coordinates}")
             ds[var].attrs["coordinates"] = coordinates
+
+        # del ds[var].attrs["dimensions"]
     return ds
 
 
-def apply_dimensions(da, dims, coords_table):
-    """apply dimensions from coordinates table"""
+def _apply_dimensions(da, dims, coords_table):
+    """Apply dimensions from coordinates table"""
 
     for d, v in dims.items():
         if d in da.coords:
-            da = add_coordinate(da, d, v)
+            da = _add_coordinate(da, d, v)
             continue
 
         keys = ["out_name", "standard_name", "axis"]
         for k in keys:
             if v[k] in da.cf.coords or v[k] in da.coords:
                 # print(f"found {v[k]} by {k}")
-                da = add_coordinate(da, v[k], v)
+                da = _add_coordinate(da, v[k], v)
                 break
 
         if v["out_name"] not in da.coords:
@@ -134,7 +155,7 @@ def apply_dimensions(da, dims, coords_table):
     return da
 
 
-def add_coordinate(da, d, axis_entry):
+def _add_coordinate(da, d, axis_entry):
     out_name = axis_entry["out_name"]
     da = da.cf.rename({d: out_name})
     da.coords[out_name].attrs = axis_entry
@@ -143,7 +164,7 @@ def add_coordinate(da, d, axis_entry):
         da = da.swap_dims({dims[0]: out_name})
 
     dtype = axis_entry.get("type")
-    if type:
+    if dtype:
         da[out_name] = da[out_name].astype(dtype)
 
     requested = axis_entry.get("requested")
