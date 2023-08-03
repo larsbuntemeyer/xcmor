@@ -1,0 +1,26 @@
+name: xcmor-doc
+channels:
+  - conda-forge
+dependencies:
+  - pip
+  - python=3.11
+  - matplotlib-base
+  - netcdf4
+  - pooch
+  - xarray
+  - cf_xarray
+  - sphinx
+  - sphinx-copybutton
+  - numpydoc
+  - sphinx-autosummary-accessors
+  - ipython
+  - ipykernel
+  - ipywidgets
+  - pandas
+  - pooch
+  - pint
+  - regex
+  - furo
+  - pip:
+      - git+https://github.com/larsbuntemeyer/xcmor
+      - myst_nb
