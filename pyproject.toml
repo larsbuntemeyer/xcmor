@@ -23,7 +23,7 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-all = ["pooch"]
+all = ["matplotlib", "pint", "shapely", "regex", "rich", "pooch"]
 
 [project.urls]
 homepage = "https://xcmor.readthedocs.io"
@@ -40,9 +40,99 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+packages = ["xcmor"]
+
+[tool.setuptools.exclude-package-data]
+xcmor = ["tests/*"]
+
 [tool.setuptools_scm]
 fallback_version = "999"
 write_to = "xcmor/_version.py"
-#version_scheme = "no-guess-dev"
 write_to_template= '__version__ = "{version}"'
 tag_regex= "^(?P<prefix>v)?(?P<version>[^\\+]+)(?P<suffix>.*)?$"
+
+[tool.black]
+target-version = ["py38"]
+
+[tool.ruff]
+target-version = "py38"
+builtins = ["ellipsis"]
+exclude = [
+    ".eggs",
+    "doc",
+]
+# E402: module level import not at top of file
+# E501: line too long - let black worry about that
+# E731: do not assign a lambda expression, use a def
+ignore = [
+    "E203",
+    "E402",
+    "E501",
+    "E731",
+    "W503",
+]
+select = [
+    # Pyflakes
+    "F",
+    # Pycodestyle
+    "E",
+    "W",
+    # isort
+    "I",
+    # Pyupgrade
+    "UP",
+]
+
+[tool.ruff.isort]
+known-first-party = ["xcmor"]
+known-third-party = [
+    "dask",
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "pint",
+    "pkg_resources",
+    "pytest",
+    "setuptools",
+    "sphinx_autosummary_accessors",
+    "xarray"
+]
+
+[tool.pytest]
+python_files = "test_*.py"
+testpaths = ["cf_xarray/tests"]
+
+[tool.rstcheck]
+report_level = "WARNING"
+ignore_roles = [
+    "pr",
+    "issue",
+]
+ignore_directives = [
+    "ipython",
+    "autodata",
+    "autosummary",
+]
+
+[tool.nbqa.md]
+mdformat = true
+
+[tool.mypy]
+exclude = "doc|flycheck"
+files = "cf_xarray/"
+show_error_codes = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module=[
+    "cftime",
+    "pandas",
+    "pooch",
+    "pint",
+    "matplotlib",
+    "pytest",
+    "shapely.geometry",
+    "xarray.core.pycompat",
+]
+ignore_missing_imports = true
