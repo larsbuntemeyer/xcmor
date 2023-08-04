@@ -1,6 +1,6 @@
 import pytest
 
-from ..utils import filter_table_by_value, parse_cell_methods
+from ..utils import filter_table_by_value, parse_cell_methods, table_to_dataframe
 from .tables import mip_amon
 
 
@@ -29,3 +29,12 @@ def test_filter_by_value():
     assert list(filtered.keys()) == expected
     for k, v in filtered.items():
         assert v == mip_amon[k]
+
+
+def test_table_to_dataframe():
+    df = table_to_dataframe(mip_amon)
+    assert df.index.to_list() == list(mip_amon.keys())
+    df = table_to_dataframe(mip_amon, index_name="variable_key")
+    assert df.variable_key.to_list() == list(mip_amon.keys())
+    assert df.standard_name.to_list() == [v["standard_name"] for v in mip_amon.values()]
+    assert df.units.to_list() == [v["units"] for v in mip_amon.values()]

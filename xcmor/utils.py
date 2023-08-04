@@ -3,8 +3,16 @@ import re
 import tempfile
 from warnings import warn
 
+import pandas as pd
 import xarray as xr
 import yaml
+
+
+def table_to_dataframe(table, index_name=None):
+    df = pd.DataFrame.from_dict(table, orient="index")
+    if index_name:
+        return df.reset_index().rename(columns={"index": index_name})
+    return df
 
 
 def filter_table_by_value(table, key, value):
