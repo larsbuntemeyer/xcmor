@@ -1,10 +1,48 @@
+[project]
+name = "xcmor"
+description = "Lazy in-memory cmorization with xarray"
+readme = "README.rst"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+keywords = ["xarray", "metadata", "CF conventions"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: Apache Software License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "xarray",
+ #   "cf_xarray",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+all = ["pooch"]
+
+[project.urls]
+homepage = "https://xcmor.readthedocs.io"
+documentation = "https://xcmor.readthedocs.io"
+repository = "https://github.com/larsbuntemeyer/xcmor.git"
+changelog = "https://xcmor.readthedocs.io/en/latest/whats-new.html"
+
 [build-system]
 requires = [
-  "setuptools>=42",
-  "setuptools-scm>=7",
+    "xarray",
+    "setuptools>=45",
+    "wheel",
+    "setuptools_scm[toml]>=6.2",
 ]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
 fallback_version = "999"
-version_scheme = "no-guess-dev"
+write_to = "xcmor/_version.py"
+#version_scheme = "no-guess-dev"
+write_to_template= '__version__ = "{version}"'
+tag_regex= "^(?P<prefix>v)?(?P<version>[^\\+]+)(?P<suffix>.*)?$"
