@@ -1,6 +1,7 @@
 import pytest
 
-from ..utils import filter_table_by_value, parse_cell_methods, table_to_dataframe
+from ..utils import (filter_table_by_value, parse_cell_methods,
+                     table_to_dataframe)
 from .tables import mip_amon
 
 
