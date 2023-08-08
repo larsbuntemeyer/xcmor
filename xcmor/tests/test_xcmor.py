@@ -1,6 +1,6 @@
 from ..datasets import reg_ds
 from ..xcmor import add_variable_attrs, cmorize
-from .tables import mip_amon
+from .tables import coords, mip_amon
 
 
 def test_add_variable_attrs():
@@ -16,7 +16,9 @@ def test_cmorize():
     ds = reg_ds.copy()
     mip_table = mip_amon
     ds_out = cmorize(
-        ds.rename({"temperature": "ta", "precipitation": "pr"}), mip_table=mip_table
+        ds.rename({"temperature": "ta", "precipitation": "pr"}),
+        mip_table=mip_table,
+        coords_table=coords,
     )
 
     expected_var_attrs = [
