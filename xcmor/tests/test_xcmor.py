@@ -1,4 +1,4 @@
-from ..datasets import reg_ds
+from ..datasets import plev_ds, reg_ds
 from ..xcmor import add_variable_attrs, cmorize
 from .tables import coords, mip_amon
 
@@ -12,11 +12,37 @@ def test_add_variable_attrs():
     assert result.frequency == mip_table["ta"]["frequency"]
 
 
-def test_cmorize():
+def test_cmorize_minimal():
     ds = reg_ds.copy()
     mip_table = mip_amon
     ds_out = cmorize(
         ds.rename({"temperature": "ta", "precipitation": "pr"}),
+        mip_table=mip_table,
+    )
+
+    return ds_out
+    expected_var_attrs = [
+        "standard_name",
+        "units",
+        "cell_methods",
+        "cell_measures",
+        "long_name",
+    ]
+    expected_global_attrs = ["frequency"]
+
+    for var in ds_out.data_vars:
+        da = ds_out[var]
+        for k in expected_var_attrs:
+            assert da.attrs[k] == mip_table[var][k]
+        for k in expected_global_attrs:
+            assert ds_out.attrs[k] == mip_table[var][k]
+
+
+def test_cmorize():
+    ds = plev_ds
+    mip_table = mip_amon
+    ds_out = cmorize(
+        ds.rename({"temperature": "ta"}),
         mip_table=mip_table,
         coords_table=coords,
     )
