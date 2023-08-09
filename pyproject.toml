@@ -18,7 +18,7 @@ classifiers = [
 ]
 dependencies = [
     "xarray",
- #   "cf_xarray",
+    "cf_xarray",
 ]
 dynamic = ["version"]
 
@@ -41,10 +41,10 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["xcmor"]
+packages = ["xcmor", "xcmor.tests"]
 
-[tool.setuptools.exclude-package-data]
-xcmor = ["tests/*"]
+#[tool.setuptools.exclude-package-data]
+#xcmor = ["tests/*"]
 
 [tool.setuptools_scm]
 fallback_version = "999"
@@ -101,7 +101,7 @@ known-third-party = [
 
 [tool.pytest]
 python_files = "test_*.py"
-testpaths = ["cf_xarray/tests"]
+testpaths = ["xcmor/tests"]
 
 [tool.rstcheck]
 report_level = "WARNING"
@@ -120,7 +120,7 @@ mdformat = true
 
 [tool.mypy]
 exclude = "doc|flycheck"
-files = "cf_xarray/"
+files = "xcmor/"
 show_error_codes = true
 warn_unused_ignores = true
 
