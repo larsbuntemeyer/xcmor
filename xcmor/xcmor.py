@@ -303,3 +303,9 @@ def add_header_attributes(ds, header, cv_table=None):
     ds.attrs.update({k: header[k] for k in header_attrs})
 
     return ds
+
+
+class Cmorizer:
+    def __init__(self, project="CMIP6", table_dir=None):
+        self.project = project
+        self.table_dir = table_dir
