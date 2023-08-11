@@ -1,30 +1,66 @@
+ci:
+    autoupdate_schedule: quarterly
+
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: 'v0.0.276'
     hooks:
-    - id: check-yaml
-    - id: check-json
-    - id: end-of-file-fixer
-    - id: trailing-whitespace
+      - id: ruff
+        args: ["--fix"]
+
   - repo: https://github.com/psf/black
-    rev: 23.7.0
+    rev: 23.3.0
     hooks:
-    - id: black
-  - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
+      - id: black
+
+  - repo: https://github.com/rstcheck/rstcheck
+    rev: v6.1.2
     hooks:
-      - id: isort
-        name: isort (python)
-  - repo: https://github.com/pycqa/flake8
-    rev: 6.1.0
+        - id: rstcheck
+          additional_dependencies: [sphinx, tomli]
+          args: ['--config', 'pyproject.toml']
+
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.16
     hooks:
-      - id: flake8
-#        entry: pflake8
-#        additional_dependencies: [pyproject-flake8]
+    - id: mdformat
+      additional_dependencies:
+        - mdformat-black
+        - mdformat-myst
+
   - repo: https://github.com/nbQA-dev/nbQA
     rev: 1.7.0
     hooks:
-      - id: nbqa-black
-      - id: nbqa-pyupgrade
-        args: [ --py38-plus ]
-      - id: nbqa-isort
+        - id: nbqa-black
+        - id: nbqa-ruff
+        - id: nbqa
+          entry: nbqa mdformat
+          name: nbqa-mdformat
+          alias: nbqa-mdformat
+          additional_dependencies: [mdformat==0.7.14]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-toml
+      - id: check-yaml
+      - id: debug-statements
+
+  - repo: https://github.com/keewis/blackdoc
+    rev: v0.3.8
+    hooks:
+      - id: blackdoc
+        files: .+\.py$
+
+  - repo: https://github.com/citation-file-format/cff-converter-python
+    rev: "44e8fc9"
+    hooks:
+    - id: validate-cff
+
+  - repo: https://github.com/abravalheri/validate-pyproject
+    rev: v0.13
+    hooks:
+      - id: validate-pyproject
