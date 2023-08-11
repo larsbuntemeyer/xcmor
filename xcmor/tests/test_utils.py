@@ -1,7 +1,8 @@
 import pytest
 
-from ..utils import (filter_table_by_value, parse_cell_methods,
-                     table_to_dataframe)
+from ..resources import retrieve_cmor_table
+from ..utils import filter_table_by_value, parse_cell_methods, table_to_dataframe
+from . import requires_pooch
 from .tables import mip_amon
 
 
@@ -39,3 +40,16 @@ def test_table_to_dataframe():
     assert df.variable_key.to_list() == list(mip_amon.keys())
     assert df.standard_name.to_list() == [v["standard_name"] for v in mip_amon.values()]
     assert df.units.to_list() == [v["units"] for v in mip_amon.values()]
+
+
+@requires_pooch
+@pytest.mark.parametrize(
+    ["table_id", "project"],
+    (
+        ("Amon", "CMIP6"),
+        ("day", "CMIP6"),
+    ),
+)
+def test_table_retrieve(table_id, project):
+    table = retrieve_cmor_table(table_id, project)
+    assert table["Header"]["table_id"] == f"Table {table_id}"

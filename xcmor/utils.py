@@ -62,9 +62,7 @@ def _get_cfvarinfo(out_name, table):
         table = _read_table(table)
     info = table["variable_entry"].get(out_name, None)
     if info is None:
-        raise Exception(
-            "{} not found in table {}".format(out_name, get_table_id(table))
-        )
+        raise Exception(f"{out_name} not found in table {get_table_id(table)}")
     return info
 
 
