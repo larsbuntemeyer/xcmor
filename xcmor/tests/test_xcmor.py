@@ -1,14 +1,14 @@
 import numpy as np
 
 from ..datasets import plev_ds, reg_ds
-from ..xcmor import Cmorizer, add_variable_attrs, cmorize
+from ..xcmor import Cmorizer, _add_var_attrs, cmorize
 from .tables import coords, dataset, mip_amon
 
 
 def test_add_variable_attrs():
     mip_table = mip_amon
     ds = reg_ds[["temperature"]].rename(temperature="ta")
-    result = add_variable_attrs(ds, mip_table)
+    result = _add_var_attrs(ds, mip_table)
     assert result.ta.units == mip_table["ta"]["units"]
     assert result.ta.standard_name == mip_table["ta"]["standard_name"]
     assert result.frequency == mip_table["ta"]["frequency"]
