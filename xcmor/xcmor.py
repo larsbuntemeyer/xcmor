@@ -307,10 +307,12 @@ def add_header_attributes(ds, header, cv_table=None):
 
 
 class Cmorizer:
-    def __init__(self, project=None, table_dir=None):
-        self._init_tables(project, table_dir)
+    def __init__(self, project=None, url=None, template=None):
+        self._init_tables(project, url, template)
 
-    def _init_tables(self, project, table_dir):
-        if project is None and table_dir is None:
+    def _init_tables(self, project, url, template):
+        if project is None and url is None:
             self.project = "CMIP6"
-            self.tables = get_project_tables(table_dir, self.project)
+        else:
+            self.project = project
+        self.tables = get_project_tables(url, self.project, template)

@@ -3,7 +3,8 @@ from os import path as op
 from urllib.parse import urlparse
 
 urls = {
-    "CMIP6": "https://raw.githubusercontent.com/PCMDI/cmip6-cmor-tables/master/Tables"
+    "CMIP6": "https://raw.githubusercontent.com/PCMDI/cmip6-cmor-tables/master/Tables",
+    "CORDEX": "https://raw.githubusercontent.com/WCRP-CORDEX/cordex-cmip6-cmor-tables/main/Tables",
 }
 
 
@@ -28,9 +29,10 @@ class ProjectTables:
             self.suffix = ".json"
         else:
             self.suffix = suffix
-        if template is None:
+        if template is None and project:
             self.template = f"{project}_" + "{table_id}" + ("" or self.suffix)
-            print(self.template)
+        elif template is None:
+            self.template = "{table_id}" + ("" or self.suffix)
         else:
             self.template = template
         self.url_parsed = urlparse(url)
@@ -64,12 +66,13 @@ class ProjectTables:
             return json.load(f)
 
 
-cmip6 = ProjectTables(urls["CMIP6"], "CMIP6")
-
-
 def get_project_tables(url=None, project=None, template=None, suffix=None):
-    if project is None:
-        project = "CMIP6"
-    if url is None:
+    if url is None and project:
         url = urls[project]
+    elif url and project is None:
+        project = ""
     return ProjectTables(url, project, template, suffix)
+
+
+cmip6 = get_project_tables(project="CMIP6")
+cordex = get_project_tables(project="CORDEX")
