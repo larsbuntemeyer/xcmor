@@ -314,6 +314,8 @@ def cmorize(
 
 
 class Cmorizer:
+    """Cmorizer class"""
+
     def __init__(self, project=None, url=None, template=None):
         self._init_tables(project, url, template)
 
@@ -323,3 +325,8 @@ class Cmorizer:
         else:
             self.project = project
         self.tables = get_project_tables(url, self.project, template)
+
+    @property
+    def required(self):
+        """List required global attributes."""
+        return self.tables.cv["CV"].get("required_global_attributes")

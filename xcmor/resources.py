@@ -61,6 +61,10 @@ class ProjectTables:
     def terms(self):
         return self.__getitem__("formula_terms")
 
+    @property
+    def cv(self):
+        return self.__getitem__("CV")
+
     def __getitem__(self, key):
         with open(self._retrieve(self.get_url(key))) as f:
             return json.load(f)
