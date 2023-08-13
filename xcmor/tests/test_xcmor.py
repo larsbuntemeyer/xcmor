@@ -1,5 +1,7 @@
+import numpy as np
+
 from ..datasets import plev_ds, reg_ds
-from ..xcmor import add_variable_attrs, cmorize
+from ..xcmor import Cmorizer, add_variable_attrs, cmorize
 from .tables import coords, mip_amon
 
 
@@ -32,6 +34,9 @@ def test_cmorize_minimal():
 
     for var in ds_out.data_vars:
         da = ds_out[var]
+        # ensure cmorizer does not change values
+        np.testing.assert_array_equal(da, ds[var])
+        # test for expected attributes
         for k in expected_var_attrs:
             assert da.attrs[k] == mip_table[var][k]
         for k in expected_global_attrs:
@@ -62,3 +67,19 @@ def test_cmorize():
             assert da.attrs[k] == mip_table[var][k]
         for k in expected_global_attrs:
             assert ds_out.attrs[k] == mip_table[var][k]
+
+
+def test_cmorizer():
+    cmorizer = Cmorizer()
+    assert cmorizer.project == "CMIP6"
+    assert (
+        cmorizer.tables.get_url("Amon")
+        == "https://raw.githubusercontent.com/PCMDI/cmip6-cmor-tables/master/Tables/CMIP6_Amon.json"
+    )
+
+    cmorizer = Cmorizer(project="CORDEX")
+    assert cmorizer.project == "CORDEX"
+    assert (
+        cmorizer.tables.get_url("mon")
+        == "https://raw.githubusercontent.com/WCRP-CORDEX/cordex-cmip6-cmor-tables/main/Tables/CORDEX_mon.json"
+    )
