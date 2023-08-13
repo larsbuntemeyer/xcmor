@@ -1,6 +1,6 @@
 import pytest
 
-from ..resources import ProjectTables, cmip6, retrieve_cmor_table
+from ..resources import ProjectTables, cmip6, cordex, retrieve_cmor_table
 from ..utils import filter_table_by_value, parse_cell_methods, table_to_dataframe
 from . import requires_pooch
 from .tables import mip_amon
@@ -55,14 +55,18 @@ def test_table_retrieve(table_id, project):
     assert table["Header"]["table_id"] == f"Table {table_id}"
 
 
-def test_project_tables():
-    tables = ProjectTables("table/dir", template="MIP_{table_id}")
-    assert tables.coords == "table/dir/MIP_coordinate.json"
-    assert tables.terms == "table/dir/MIP_formula_terms.json"
-    assert tables.grids == "table/dir/MIP_grids.json"
+def test_url_tables():
+    tables = ProjectTables("table/dir", template="MIP_{table_id}.json")
+    assert tables.get_url("coordinate") == "table/dir/MIP_coordinate.json"
+    tables = ProjectTables("table/dir", template="MIP_{table_id}.yaml")
+    assert tables.get_url("coordinate") == "table/dir/MIP_coordinate.yaml"
 
 
 @requires_pooch
-def test_cmip6_project_tables():
+def test_project_tables():
     assert isinstance(cmip6["coordinate"], dict)
+    assert cmip6.grids["Header"]["table_id"] == "Table grids"
+    assert isinstance(cmip6.coords, dict)
+    assert isinstance(cmip6.terms, dict)
     assert isinstance(cmip6["Amon"], dict)
+    assert isinstance(cordex["mon"], dict)
