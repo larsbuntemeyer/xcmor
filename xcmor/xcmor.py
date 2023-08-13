@@ -43,7 +43,7 @@ def _interpret_var_attrs(ds, mip_table):
         attrs = ds[v].attrs
         if ds[v].dtype != dtype_map[attrs["type"]]:
             logger.warning(
-                "converting {v} from {ds[v].dtype} to {dtype_map[attrs['type']]}"
+                f"converting {v} from {ds[v].dtype} to {dtype_map[attrs['type']]}"
             )
             ds[v] = ds[v].astype(dtype_map[attrs["type"]])
         del ds[v].attrs["type"]
