@@ -6,8 +6,11 @@ import cf_xarray as cfxr  # noqa
 import numpy as np
 from xarray import DataArray
 
+from .log import get_logger
 from .mapping import dtype_map
 from .resources import get_project_tables
+
+logger = get_logger(__name__)
 
 
 def cmorize(
@@ -120,7 +123,11 @@ def interpret_variable_attrs(ds, mip_table):
 
     for v in ds.data_vars:
         attrs = ds[v].attrs
-        ds[v] = ds[v].astype(dtype_map[attrs["type"]])
+        if ds[v].dtype != dtype_map[attrs["type"]]:
+            logger.warning(
+                "converting {v} from {ds[v].dtype} to {dtype_map[attrs['type']]}"
+            )
+            ds[v] = ds[v].astype(dtype_map[attrs["type"]])
         del ds[v].attrs["type"]
 
         ds.rename({v: attrs.get("out_name") or v})

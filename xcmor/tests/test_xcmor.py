@@ -2,7 +2,7 @@ import numpy as np
 
 from ..datasets import plev_ds, reg_ds
 from ..xcmor import Cmorizer, add_variable_attrs, cmorize
-from .tables import coords, mip_amon
+from .tables import coords, dataset, mip_amon
 
 
 def test_add_variable_attrs():
@@ -35,7 +35,7 @@ def test_cmorize_minimal():
     for var in ds_out.data_vars:
         da = ds_out[var]
         # ensure cmorizer does not change values
-        np.testing.assert_array_equal(da, ds[var])
+        np.testing.assert_allclose(da, ds[var])
         # test for expected attributes
         for k in expected_var_attrs:
             assert da.attrs[k] == mip_table[var][k]
@@ -50,6 +50,7 @@ def test_cmorize():
         ds.rename({"temperature": "ta"}),
         mip_table=mip_table,
         coords_table=coords,
+        dataset_table=dataset,
     )
 
     expected_var_attrs = [
@@ -63,6 +64,9 @@ def test_cmorize():
 
     for var in ds_out.data_vars:
         da = ds_out[var]
+        # ensure cmorizer does not change values
+        np.testing.assert_allclose(da, ds["temperature"])
+        # test for expected attributes
         for k in expected_var_attrs:
             assert da.attrs[k] == mip_table[var][k]
         for k in expected_global_attrs:
