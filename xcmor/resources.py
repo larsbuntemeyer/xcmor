@@ -30,6 +30,7 @@ class ProjectTables:
             self.suffix = suffix
         if template is None:
             self.template = f"{project}_" + "{table_id}" + ("" or self.suffix)
+            print(self.template)
         else:
             self.template = template
         self.url_parsed = urlparse(url)

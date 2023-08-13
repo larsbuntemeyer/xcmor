@@ -56,10 +56,10 @@ def test_table_retrieve(table_id, project):
 
 
 def test_project_tables():
-    tables = ProjectTables("table/dir", template="MIP_{table_id}")
-    assert tables.coords == "table/dir/MIP_coordinate.json"
-    assert tables.terms == "table/dir/MIP_formula_terms.json"
-    assert tables.grids == "table/dir/MIP_grids.json"
+    tables = ProjectTables("table/dir", template="MIP_{table_id}.json")
+    assert tables.get_url("coordinate") == "table/dir/MIP_coordinate.json"
+    tables = ProjectTables("table/dir", template="MIP_{table_id}.yaml")
+    assert tables.get_url("coordinate") == "table/dir/MIP_coordinate.yaml"
 
 
 @requires_pooch
