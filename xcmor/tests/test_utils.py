@@ -65,5 +65,8 @@ def test_url_tables():
 @requires_pooch
 def test_project_tables():
     assert isinstance(cmip6["coordinate"], dict)
+    assert cmip6.grids["Header"]["table_id"] == "Table grids"
+    assert isinstance(cmip6.coords, dict)
+    assert isinstance(cmip6.terms, dict)
     assert isinstance(cmip6["Amon"], dict)
     assert isinstance(cordex["mon"], dict)
