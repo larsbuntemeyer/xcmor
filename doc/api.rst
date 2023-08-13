@@ -10,3 +10,4 @@ Top-level API
     :toctree: generated/
 
     cmorize
+    Cmorizer

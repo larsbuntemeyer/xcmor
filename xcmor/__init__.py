@@ -1,3 +1,3 @@
-from .xcmor import cmorize
+from .xcmor import Cmorizer, cmorize
 
-__all__ = ["cmorize"]
+__all__ = ["cmorize", "Cmorizer"]
