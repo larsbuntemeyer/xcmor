@@ -7,6 +7,7 @@ import numpy as np
 from xarray import DataArray
 
 from .mapping import dtype_map
+from .resources import get_project_tables
 
 
 def cmorize(
@@ -306,6 +307,10 @@ def add_header_attributes(ds, header, cv_table=None):
 
 
 class Cmorizer:
-    def __init__(self, project="CMIP6", table_dir=None):
-        self.project = project
-        self.table_dir = table_dir
+    def __init__(self, project=None, table_dir=None):
+        self._init_tables(project, table_dir)
+
+    def _init_tables(self, project, table_dir):
+        if project is None and table_dir is None:
+            self.project = "CMIP6"
+            self.tables = get_project_tables(table_dir, self.project)
