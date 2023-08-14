@@ -42,9 +42,8 @@ Example
 
    from xcmor import Cmorizer
    from xcmor.datasets import reg_ds
-   
+
    cmor = Cmorizer()
    ds_out = cmor.cmorize(
        reg_ds.rename(temperature="tas").tas, "Amon", cmor.tables["input_example"]
    )
-
