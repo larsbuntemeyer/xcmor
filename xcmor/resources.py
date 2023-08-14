@@ -65,9 +65,13 @@ class ProjectTables:
     def cv(self):
         return self.__getitem__("CV")
 
-    def __getitem__(self, key):
+    def __getitem__(self, key, strip=True):
         with open(self._retrieve(self.get_url(key))) as f:
-            return json.load(f)
+            table = json.load(f)
+        # strip keys
+        if strip is True:
+            table = {k.strip(): v for k, v in table.items()}
+        return table
 
 
 def get_project_tables(url=None, project=None, template=None, suffix=None):

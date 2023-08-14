@@ -101,3 +101,5 @@ def test_cmorizer_cmorize():
             assert da.attrs[k] == cmor.tables[mip_table]["variable_entry"][var][k]
         for k in expected_global_attrs:
             assert ds_out.attrs[k] == cmor.tables[mip_table]["variable_entry"][var][k]
+
+    assert ds_out.to_netcdf("test.nc") is None
