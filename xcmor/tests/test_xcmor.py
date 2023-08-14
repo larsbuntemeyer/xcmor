@@ -4,6 +4,14 @@ from ..datasets import plev_ds, reg_ds
 from ..xcmor import Cmorizer, _add_var_attrs, cmorize
 from .tables import coords, dataset, mip_amon
 
+expected_var_attrs = [
+    "standard_name",
+    "units",
+    "cell_methods",
+    "cell_measures",
+    "long_name",
+]
+
 
 def test_add_variable_attrs():
     mip_table = mip_amon
@@ -23,13 +31,7 @@ def test_cmorize_minimal():
     )
 
     return ds_out
-    expected_var_attrs = [
-        "standard_name",
-        "units",
-        "cell_methods",
-        "cell_measures",
-        "long_name",
-    ]
+
     expected_global_attrs = ["frequency"]
 
     for var in ds_out.data_vars:
@@ -53,13 +55,6 @@ def test_cmorize():
         dataset_table=dataset,
     )
 
-    expected_var_attrs = [
-        "standard_name",
-        "units",
-        "cell_methods",
-        "cell_measures",
-        "long_name",
-    ]
     expected_global_attrs = ["frequency"]
 
     for var in ds_out.data_vars:
@@ -87,3 +82,24 @@ def test_cmorizer():
         cmorizer.tables.get_url("mon")
         == "https://raw.githubusercontent.com/WCRP-CORDEX/cordex-cmip6-cmor-tables/main/Tables/CORDEX_mon.json"
     )
+
+
+def test_cmorizer_cmorize():
+    ds = reg_ds.rename(temperature="tas")
+    cmor = Cmorizer(project="CMIP6")
+    mip_table = "Amon"
+    ds_out = cmor.cmorize(ds.tas, mip_table, cmor.tables["input_example"])
+
+    expected_global_attrs = ["frequency"]
+
+    for var in ds_out.data_vars:
+        da = ds_out[var]
+        # ensure cmorizer does not change values
+        np.testing.assert_allclose(da, ds[var])
+        # test for expected attributes
+        for k in expected_var_attrs:
+            assert da.attrs[k] == cmor.tables[mip_table]["variable_entry"][var][k]
+        for k in expected_global_attrs:
+            assert ds_out.attrs[k] == cmor.tables[mip_table]["variable_entry"][var][k]
+
+    assert ds_out.to_netcdf("test.nc") is None

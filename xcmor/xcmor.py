@@ -1,7 +1,7 @@
 import collections
 from datetime import date
-from warnings import warn
 
+# from warnings import warn
 import cf_xarray as cfxr  # noqa
 import numpy as np
 from xarray import DataArray
@@ -105,7 +105,7 @@ def _apply_dims(da, dims, coords_table):
                 break
 
         if v["out_name"] not in da.coords:
-            warn(f"adding coordinate: {d}")
+            logger.info(f"adding coordinate: {d}")
             value = float(v["value"])
             dtype = v["type"]
             coord = DataArray(value).astype(dtype)
@@ -160,9 +160,9 @@ def _check_cv(ds, cv_table):
         cv_values = cv.get(attr)
         v = ds.attrs.get(attr)
         if not v:
-            warn(f"{attr} not found")
+            logger.warn(f"{attr} not found")
         elif cv_values and v not in list(cv_values):
-            warn(f"value '{v}' for '{attr}' not in {list(cv_values)}")
+            logger.warn(f"value '{v[0:50]}...' for '{attr}' not in {list(cv_values)}")
 
 
 def _add_derived_attrs(ds, cv_table):
@@ -183,14 +183,14 @@ def _add_derived_attr(ds, attr, cv_values):
     if isinstance(cv_values, str) and attr.endswith("_id"):
         v = cv_values
         k = attr.replace("_id", "")
-        warn(f"for attribute '{k}' --> add value '{v}'")
+        logger.info(f"for attribute '{k}' --> add value '{v}'")
         ds.attrs[k] = v
         return ds
 
     if isinstance(cv_values, str):
         v = cv_values
         k = attr + "_description"
-        warn(f"for attribute '{k}' --> add value '{v}'")
+        logger.info(f"for attribute '{k}' --> add value '{v}'")
         ds.attrs[k] = v
         return ds
 
@@ -198,13 +198,13 @@ def _add_derived_attr(ds, attr, cv_values):
         actual_value = ds.attrs.get(k)
         if isinstance(v, list) and actual_value:
             if actual_value not in v:
-                warn(f"actual_value '{actual_value}' for {k} not in {v}")
+                logger.warn(f"actual_value '{actual_value}' for {k} not in {v}")
         elif isinstance(v, str) and actual_value is None:
-            warn(f"for attribute '{k}' --> add value '{v}'")
+            logger.info(f"for attribute '{k}' --> add value '{v}'")
             ds.attrs[k] = v
         elif isinstance(v, str) and actual_value:
             if actual_value != v:
-                warn(
+                logger.warn(
                     f"attribute '{k}' is set to '{actual_value}' but CV has '{v}' derived from '{attr}'!"
                 )
             ds.attrs[k] = v
@@ -354,3 +354,42 @@ class Cmorizer:
     def required(self):
         """List required global attributes."""
         return self.tables.cv["CV"].get("required_global_attributes")
+
+    def cmorize(self, ds, mip_table, dataset_table, mapping=None):
+        """Lazy cmorization.
+
+        Cmorizes an xarray Dataset or DataArray object. The cmorizations tries
+        to follow the approach of the original `cmor <https://github.com/PCMDI/cmor>`_
+        library in adding, manipulating and interpreting dataseta attributes and
+        cmor table vocabulary.
+
+        Parameters
+        ----------
+        ds : DataArray, Dataset
+            Dataset that should be cmorized.
+        mip_table : dict, str
+            The MIP table, can either be a dictionary or a path to a cmor table
+            in json format.
+        dataset_table : dict, str
+            The input dataset cmor table, can either be a dictionary or a path to a cmor table
+            in json format.
+        mapping: dict
+            The mapping table mapping input variable names to cmor table axis entry keys.
+
+        Returns
+        -------
+        Cmorized Dataset.
+
+        """
+
+        if not isinstance(mip_table, dict):
+            mip_table = self.tables[mip_table]
+
+        return cmorize(
+            ds,
+            mip_table=mip_table,
+            dataset_table=dataset_table,
+            coords_table=self.tables.coords,
+            cv_table=self.tables.cv,
+            mapping=mapping,
+        )
