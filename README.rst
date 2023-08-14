@@ -34,3 +34,17 @@ of APIs for different programming languages (including python) to rewrite climat
 to NetCDF files, xcmor focuses more on lazy cmorization in memory without neccessarily
 having to actually rewrite the dataset to a filesystem. However, this is, of course, also possible
 using xarrays `versatile IO features <https://docs.xarray.dev/en/stable/user-guide/io.html>`_.
+
+Example
+-------
+
+.. code-block:: python
+
+   from xcmor import Cmorizer
+   from xcmor.datasets import reg_ds
+   
+   cmor = Cmorizer()
+   ds_out = cmor.cmorize(
+       reg_ds.rename(temperature="tas").tas, "Amon", cmor.tables["input_example"]
+   )
+
