@@ -105,7 +105,7 @@ def _apply_dims(da, dims, coords_table):
                 # print(f"found {v[k]} by {k}")
                 da = _add_coord(da, v[k], v)
                 break
-                
+
         # seems to be a scalar coordinate that we need to create
         if v["out_name"] not in da.coords:
             logger.info(f"adding coordinate: {d}")
