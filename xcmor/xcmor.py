@@ -93,17 +93,20 @@ def _apply_dims(da, dims, coords_table):
     """Apply dimensions from coordinates table"""
 
     for d, v in dims.items():
+        # we find the coordinate already by its correct cf name
         if d in da.coords:
             da = _add_coord(da, d, v)
             continue
 
+        # search for a coordinate by attributes (using cf_xarray)
         keys = ["out_name", "standard_name", "axis"]
         for k in keys:
             if v[k] in da.cf.coords or v[k] in da.coords:
                 # print(f"found {v[k]} by {k}")
                 da = _add_coord(da, v[k], v)
                 break
-
+                
+        # seems to be a scalar coordinate that we need to create
         if v["out_name"] not in da.coords:
             logger.info(f"adding coordinate: {d}")
             value = float(v["value"])
@@ -116,6 +119,7 @@ def _apply_dims(da, dims, coords_table):
 
 
 def _add_coord(da, d, axis_entry):
+    """Add coordinate attributes from coordinates table""""
     out_name = axis_entry["out_name"]
     da = da.cf.rename({d: out_name})
     da.coords[out_name].attrs = axis_entry
