@@ -119,7 +119,7 @@ def _apply_dims(da, dims, coords_table):
 
 
 def _add_coord(da, d, axis_entry):
-    """Add coordinate attributes from coordinates table""""
+    """Add coordinate attributes from coordinates table"""
     out_name = axis_entry["out_name"]
     da = da.cf.rename({d: out_name})
     da.coords[out_name].attrs = axis_entry
