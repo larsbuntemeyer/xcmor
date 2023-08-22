@@ -277,7 +277,7 @@ def cmorize(
 
     ds = ds.copy()
 
-    ds = ds.cf.guess_coord_axis(verbose=True)
+    ds = ds.cf.guess_coord_axis(verbose=False)
 
     if coords_table is None:
         coords_table = {}
@@ -373,16 +373,29 @@ class Cmorizer:
             Dataset that should be cmorized.
         mip_table : dict, str
             The MIP table, can either be a dictionary or a path to a cmor table
-            in json format.
+            in json format or a table_id from the MIP.
         dataset_table : dict, str
             The input dataset cmor table, can either be a dictionary or a path to a cmor table
             in json format.
-        mapping: dict
+        mapping : dict
             The mapping table mapping input variable names to cmor table axis entry keys.
 
         Returns
         -------
         Cmorized Dataset.
+
+        Examples
+        --------
+
+        >>> from xcmor.datasets import reg_ds
+        >>> from xcmor import Cmorizer
+        >>>
+        >>> cmor = Cmorizer()
+        >>> ds_out = cmor.cmorize(
+        ...     reg_ds.rename(temperature="tas").tas,
+        ...     "Amon",
+        ...     cmor.tables["input_example"],
+        ... )
 
         """
 

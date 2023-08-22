@@ -43,7 +43,7 @@ or using ``conda``
    :hidden:
    :caption: User Guide
 
-   quickstart
+   cmor
    API Reference <api>
 
 .. toctree::
