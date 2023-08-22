@@ -23,12 +23,3 @@ of the climate data operator tool (CDO).
 Data and metadata conventions for a MIP are usually stored in the form of json tables that contain entries for each
 variable and its metadata. Metadata is attached in the form of NetCDF variable or global attributes. Additionally,
 data might have to be manipulated (e.g., unit conversion or conversion of precision)
-
-## Tables
-
-```{code-cell}
-from xcmor.resources import get_project_tables
-
-tables = get_project_tables(project="CMIP6")
-tables.coords['axis_entry'].keys()
-```
