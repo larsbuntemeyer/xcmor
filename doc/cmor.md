@@ -1,11 +1,4 @@
---
-jupytext:
-  text_representation:
-    format_name: myst
-kernelspec:
-  display_name: Python 3
-  name: python3
----
+## -- jupytext: text_representation: format_name: myst kernelspec: display_name: Python 3 name: python3
 
 ```{eval-rst}
 .. currentmodule:: xarray
@@ -32,14 +25,14 @@ Data and metadata conventions for a MIP are usually stored in the form of json t
 variable and its metadata. Metadata is attached in the form of NetCDF variable or global attributes. Additionally,
 data might have to be manipulated (e.g., unit conversion or conversion of precision)
 
-
-
 ## Tables
 
-``{code-cell}
+\`\`\{code-cell}
 from xcmor.resources import get_project_tables
 
 tables = get_project_tables(project="CMIP6")
-coords = tables['coords']
+coords = tables\['coords'\]
+
 ```
 
+```
