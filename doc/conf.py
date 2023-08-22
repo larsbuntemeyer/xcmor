@@ -59,6 +59,9 @@ templates_path = ["_templates", sphinx_autosummary_accessors.templates_path]
 # The suffix of source filenames.
 source_suffix = ".rst"
 
+# Strip and configure input prompts for code cells
+copybutton_prompt_text = ">>> "
+
 # Enable notebook execution
 # https://nbsphinx.readthedocs.io/en/0.4.2/never-execute.html
 # nbsphinx_execute = 'auto'

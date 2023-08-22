@@ -1,15 +1,14 @@
-## -- jupytext: text_representation: format_name: myst kernelspec: display_name: Python 3 name: python3
+---
+jupytext:
+  text_representation:
+    format_name: myst
+kernelspec:
+  display_name: Python 3
+  name: python3
+---
 
 ```{eval-rst}
 .. currentmodule:: xarray
-```
-
-```{code-cell}
----
-tags: [remove-cell]
----
-import xarray as xr
-xr.set_options(display_expand_data=False)
 ```
 
 # What does *cmorization* mean?
@@ -27,12 +26,10 @@ data might have to be manipulated (e.g., unit conversion or conversion of precis
 
 ## Tables
 
-\`\`\{code-cell}
+
+```{code-cell}
 from xcmor.resources import get_project_tables
 
 tables = get_project_tables(project="CMIP6")
-coords = tables\['coords'\]
-
-```
-
+tables.coords['axis_entry'].keys()
 ```
