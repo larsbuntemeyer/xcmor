@@ -386,12 +386,16 @@ class Cmorizer:
 
         Examples
         --------
-        
+
         >>> from xcmor.datasets import reg_ds
         >>> from xcmor import Cmorizer
+        >>>
         >>> cmor = Cmorizer()
         >>> ds_out = cmor.cmorize(
-        >>>     reg_ds.rename(temperature="tas").tas, "Amon", cmor.tables["input_example"])
+        ...     reg_ds.rename(temperature="tas").tas,
+        ...     "Amon",
+        ...     cmor.tables["input_example"],
+        ... )
 
         """
 

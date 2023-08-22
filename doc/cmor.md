@@ -26,7 +26,6 @@ data might have to be manipulated (e.g., unit conversion or conversion of precis
 
 ## Tables
 
-
 ```{code-cell}
 from xcmor.resources import get_project_tables
 
