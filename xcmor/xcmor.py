@@ -76,7 +76,8 @@ def _interpret_var_dims(ds, coords_table):
         dims = ds[var].attrs.get("dimensions")
         dims = {d: coords_table[d] for d in dims.split()}
         ds = _apply_dims(ds, dims, coords_table)
-        # add coordinates attribute
+        # add coordinates attribute, e.g., for 0D coordinate variables
+        # e.g., height2m, etc...
         coordinates = " ".join(
             [d["out_name"] for d in dims.values() if d["out_name"] not in ds.indexes]
         )
