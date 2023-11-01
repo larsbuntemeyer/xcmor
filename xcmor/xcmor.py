@@ -170,6 +170,13 @@ def _check_cv(ds, cv_table):
 
 
 def _add_derived_attrs(ds, cv_table):
+    """Add derived global attributes from CV
+
+    Attributes in the CV table might contain derived
+    attributes that we add automatically.
+
+
+    """
     cv = cv_table.get("CV") or cv_table
 
     req_attrs = cv["required_global_attributes"]
@@ -185,6 +192,9 @@ def _add_derived_attrs(ds, cv_table):
 
 def _add_derived_attr(ds, attr, cv_values):
     if isinstance(cv_values, str) and attr.endswith("_id"):
+        # for all attributes that end with "*_id", and that
+        # have a description in the CV, we add another attribute
+        # containing that description, e.g. institution_id
         v = cv_values
         k = attr.replace("_id", "")
         logger.info(f"for attribute '{k}' --> add value '{v}'")
@@ -192,19 +202,29 @@ def _add_derived_attr(ds, attr, cv_values):
         return ds
 
     if isinstance(cv_values, str):
+        # for all attributes that have a description in the CV
+        # we add another attribute ending on "*_info" that
+        # adds the description, .e.g, frequency
         v = cv_values
-        k = attr + "_description"
+        k = attr + "_info"
         logger.info(f"for attribute '{k}' --> add value '{v}'")
         ds.attrs[k] = v
         return ds
 
     for k, v in cv_values.items():
+        # if cv_values is a dict,
         actual_value = ds.attrs.get(k)
         if isinstance(v, list) and actual_value:
             if actual_value not in v:
-                logger.warn(f"actual_value '{actual_value}' for {k} not in {v}")
+                logger.warn(
+                    f"actual_value '{actual_value}' for {k} not in list of expected values: {v}"
+                )
         elif isinstance(v, str) and actual_value is None:
-            logger.info(f"for attribute '{k}' --> add value '{v}'")
+            message = (
+                f"for attribute '{k}' --> add value '{v}' because attribute '{attr}' in CV "
+                f"asks for attribute '{k}' to be set to '{v}'"
+            )
+            logger.info(message)
             ds.attrs[k] = v
         elif isinstance(v, str) and actual_value:
             if actual_value != v:
