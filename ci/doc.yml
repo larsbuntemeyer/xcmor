@@ -3,13 +3,13 @@ channels:
   - conda-forge
 dependencies:
   - pip
-  - python=3.11
+  - python=3.10
   - matplotlib-base
   - netcdf4
   - pooch
   - xarray
-  - cf_xarray
   - sphinx
+  - cf_xarray
   - sphinx-copybutton
   - numpydoc
   - sphinx-autosummary-accessors
@@ -19,9 +19,8 @@ dependencies:
   - pandas
   - pooch
   - pint
-  - pytest
   - regex
   - furo
+  - myst-nb
   - pip:
-      - git+https://github.com/larsbuntemeyer/xcmor
-      - myst_nb
+      - -e ../
