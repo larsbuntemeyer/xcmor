@@ -9,7 +9,7 @@ dependencies:
   - pooch
   - xarray
   - cf_xarray
-  - sphinx
+  - sphinx>=6.0
   - sphinx-copybutton
   - numpydoc
   - sphinx-autosummary-accessors
