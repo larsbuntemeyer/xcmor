@@ -13,6 +13,23 @@ from .resources import get_project_tables
 logger = get_logger(__name__)
 
 
+def _guess_X_Y_coords(ds):
+    """Guess linear X and Y coordinates"""
+    ds = ds.cf.guess_coord_axis()
+    X = None
+    Y = None
+    if all([c in ds.cf.coords for c in ["X", "Y"]]):
+        X = ds.cf["X"].name
+        Y = ds.cf["Y"].name
+    elif all([c in ds.cf.coords for c in ["longitude", "latitude"]]):
+        lon = ds.cf["longitude"]
+        lat = ds.cf["latitude"]
+        if lon.ndim == 1 and lat.ndim == 1:
+            X = lon.name
+            Y = lat.name
+    return X, Y
+
+
 def _add_var_attrs(ds, mip_table):
     """add variable attributes"""
 

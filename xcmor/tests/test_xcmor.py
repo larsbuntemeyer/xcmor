@@ -1,7 +1,8 @@
 import numpy as np
+from cf_xarray.datasets import rotds
 
 from ..datasets import plev_ds, reg_ds
-from ..xcmor import Cmorizer, _add_var_attrs, cmorize
+from ..xcmor import Cmorizer, _add_var_attrs, _guess_X_Y_coords, cmorize
 from .tables import coords, dataset, mip_amon
 
 expected_var_attrs = [
@@ -11,6 +12,11 @@ expected_var_attrs = [
     "cell_measures",
     "long_name",
 ]
+
+
+def test_guess_x_y_coords():
+    assert _guess_X_Y_coords(reg_ds) == ("lon", "lat")
+    assert _guess_X_Y_coords(rotds) == ("rlon", "rlat")
 
 
 def test_add_variable_attrs():
