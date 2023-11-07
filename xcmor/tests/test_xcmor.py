@@ -1,8 +1,9 @@
 import numpy as np
+import xarray as xr
 from cf_xarray.datasets import rotds
 
 from ..datasets import plev_ds, reg_ds
-from ..xcmor import Cmorizer, _add_var_attrs, _guess_X_Y_coords, cmorize
+from ..xcmor import Cmorizer, _add_var_attrs, _get_x_y_coords, cmorize
 from .tables import coords, dataset, mip_amon
 
 expected_var_attrs = [
@@ -14,9 +15,26 @@ expected_var_attrs = [
 ]
 
 
-def test_guess_x_y_coords():
-    assert _guess_X_Y_coords(reg_ds) == ("lon", "lat")
-    assert _guess_X_Y_coords(rotds) == ("rlon", "rlat")
+def test_get_x_y_coords():
+    result = _get_x_y_coords(rotds)
+    xr.testing.assert_equal(result[0], rotds.rlon)
+    xr.testing.assert_equal(result[1], rotds.rlat)
+
+    result = _get_x_y_coords(reg_ds)
+    expect_lon = reg_ds.cf["lon"]
+    expect_lat = reg_ds.cf["lat"]
+    expect_lon.attrs = {
+        "units": "degrees_east",
+        "standard_name": "longitude",
+        "axis": "X",
+    }
+    expect_lat.attrs = {
+        "units": "degrees_north",
+        "standard_name": "latitude",
+        "axis": "Y",
+    }
+    xr.testing.assert_equal(result[0], expect_lon)
+    xr.testing.assert_equal(result[1], expect_lat)
 
 
 def test_add_variable_attrs():

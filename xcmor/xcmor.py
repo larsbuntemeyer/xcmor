@@ -28,8 +28,8 @@ def _get_x_y_coords(obj):
             X = lon
             Y = lat
     if X is not None and Y is not None:
-        X.attrs["axis"] = X
-        Y.attrs["axis"] = Y
+        X.attrs["axis"] = "X"
+        Y.attrs["axis"] = "Y"
     return X, Y
 
 
