@@ -13,6 +13,43 @@ from .resources import get_project_tables
 logger = get_logger(__name__)
 
 
+def _get_x_y_coords(obj):
+    """Guess linear X and Y coordinates"""
+    obj = obj.cf.guess_coord_axis()
+    X = None
+    Y = None
+    if "X" in obj.cf.coords and "Y" in obj.cf.coords:
+        X = obj.cf["X"]
+        Y = obj.cf["Y"]
+    elif "longitude" in obj.cf.coords and "latitude" in obj.cf.coords:
+        lon = obj.cf["longitude"]
+        lat = obj.cf["latitude"]
+        if lon.ndim == 1 and lat.ndim == 1:
+            X = lon
+            Y = lat
+    if X is not None and Y is not None:
+        X.attrs["axis"] = "X"
+        Y.attrs["axis"] = "Y"
+    return X, Y
+
+
+def _get_lon_lat(obj):
+    """Return lon and lat extracted from ds."""
+    obj = obj.copy().cf.guess_coord_axis()
+    try:
+        lon = obj.cf["longitude"]
+        lat = obj.cf["latitude"]
+    except KeyError:
+        raise KeyError("could not identify longitude/latitude")
+
+    return lon, lat
+
+
+def _is_curvilinear(obj):
+    lon, lat = _get_lon_lat(obj)
+    return lon.ndim > 1 and lat.ndim > 1
+
+
 def _add_var_attrs(ds, mip_table):
     """add variable attributes"""
 
