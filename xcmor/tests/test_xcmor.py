@@ -3,7 +3,14 @@ import xarray as xr
 from cf_xarray.datasets import rotds
 
 from ..datasets import plev_ds, reg_ds
-from ..xcmor import Cmorizer, _add_var_attrs, _get_lon_lat, _get_x_y_coords, cmorize
+from ..xcmor import (
+    Cmorizer,
+    _add_var_attrs,
+    _get_lon_lat,
+    _get_x_y_coords,
+    _is_curvilinear,
+    cmorize,
+)
 from .tables import coords, dataset, mip_amon
 
 expected_var_attrs = [
@@ -45,6 +52,11 @@ def test_get_lon_lat():
     result = _get_lon_lat(reg_ds)
     xr.testing.assert_equal(result[0], reg_ds.cf["lon"])
     xr.testing.assert_equal(result[1], reg_ds.cf["lat"])
+
+
+def test_curvilinear():
+    assert _is_curvilinear(rotds) is True
+    assert _is_curvilinear(reg_ds) is False
 
 
 def test_add_variable_attrs():

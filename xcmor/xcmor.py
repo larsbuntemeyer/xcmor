@@ -45,6 +45,11 @@ def _get_lon_lat(obj):
     return lon, lat
 
 
+def _is_curvilinear(obj):
+    lon, lat = _get_lon_lat(obj)
+    return lon.ndim > 1 and lat.ndim > 1
+
+
 def _add_var_attrs(ds, mip_table):
     """add variable attributes"""
 
