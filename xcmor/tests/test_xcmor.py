@@ -3,7 +3,7 @@ import xarray as xr
 from cf_xarray.datasets import rotds
 
 from ..datasets import plev_ds, reg_ds
-from ..xcmor import Cmorizer, _add_var_attrs, _get_x_y_coords, cmorize
+from ..xcmor import Cmorizer, _add_var_attrs, _get_lon_lat, _get_x_y_coords, cmorize
 from .tables import coords, dataset, mip_amon
 
 expected_var_attrs = [
@@ -35,6 +35,16 @@ def test_get_x_y_coords():
     }
     xr.testing.assert_equal(result[0], expect_lon)
     xr.testing.assert_equal(result[1], expect_lat)
+
+
+def test_get_lon_lat():
+    result = _get_lon_lat(rotds)
+    xr.testing.assert_equal(result[0], rotds.cf["longitude"])
+    xr.testing.assert_equal(result[1], rotds.cf["latitude"])
+
+    result = _get_lon_lat(reg_ds)
+    xr.testing.assert_equal(result[0], reg_ds.cf["lon"])
+    xr.testing.assert_equal(result[1], reg_ds.cf["lat"])
 
 
 def test_add_variable_attrs():
