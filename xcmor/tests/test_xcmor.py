@@ -122,11 +122,11 @@ def test_cmorizer():
         == "https://raw.githubusercontent.com/PCMDI/cmip6-cmor-tables/master/Tables/CMIP6_Amon.json"
     )
 
-    cmorizer = Cmorizer(project="CORDEX")
-    assert cmorizer.project == "CORDEX"
+    cmorizer = Cmorizer(project="CORDEX-CMIP6")
+    assert cmorizer.project == "CORDEX-CMIP6"
     assert (
         cmorizer.tables.get_url("mon")
-        == "https://raw.githubusercontent.com/WCRP-CORDEX/cordex-cmip6-cmor-tables/main/Tables/CORDEX_mon.json"
+        == "https://raw.githubusercontent.com/WCRP-CORDEX/cordex-cmip6-cmor-tables/main/Tables/CORDEX-CMIP6_mon.json"
     )
 
 
