@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 urls = {
     "CMIP6": "https://raw.githubusercontent.com/PCMDI/cmip6-cmor-tables/master/Tables",
-    "CORDEX": "https://raw.githubusercontent.com/WCRP-CORDEX/cordex-cmip6-cmor-tables/main/Tables",
+    "CORDEX-CMIP6": "https://raw.githubusercontent.com/WCRP-CORDEX/cordex-cmip6-cmor-tables/main/Tables",
 }
 
 
