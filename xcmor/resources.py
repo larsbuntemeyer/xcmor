@@ -12,7 +12,6 @@ def retrieve_cmor_table(table_id, project="CMIP6"):
     import pooch
 
     suffix = ".json"
-COR
     url = op.join(urls[project], f"{project}_{table_id}{suffix}")
 
     filepath = pooch.retrieve(url, known_hash=None)
