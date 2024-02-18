@@ -12,7 +12,7 @@ def retrieve_cmor_table(table_id, project="CMIP6"):
     import pooch
 
     suffix = ".json"
-
+COR
     url = op.join(urls[project], f"{project}_{table_id}{suffix}")
 
     filepath = pooch.retrieve(url, known_hash=None)
@@ -83,4 +83,4 @@ def get_project_tables(url=None, project=None, template=None, suffix=None):
 
 
 cmip6 = get_project_tables(project="CMIP6")
-cordex = get_project_tables(project="CORDEX")
+cordex = get_project_tables(project="CORDEX-CMIP6")
