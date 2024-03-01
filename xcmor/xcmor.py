@@ -119,38 +119,46 @@ def _interpret_var_attrs(ds, mip_table):
     return ds
 
 
-def _interpret_var_dims(ds, coords_table):
-    """Interpret variable dimensions attribute.
+def _add_coord(da, d, axis_entry):
+    """Add coordinate attributes from coordinates table"""
+    out_name = axis_entry["out_name"]
+    da = da.cf.rename({d: out_name})
+    da.coords[out_name].attrs = axis_entry
+    dims = da.coords[out_name].dims
+    if len(dims) == 1:
+        da = da.swap_dims({dims[0]: out_name})
 
-    This will look up the dimensions defined for variables
-    in the mip table and update coordinates acoording to
-    meta data in the coordinates table.
+    dtype = axis_entry.get("type")
+    if dtype:
+        da[out_name] = da[out_name].astype(dtype)
+
+    requested = axis_entry.get("requested")
+    if requested:
+        requested = list(map(float, requested))
+        # print(f"requested: {requested}")
+        # print(f"values: {da[out_name].values}")
+        assert np.allclose(da[out_name].values, requested)
+
+    return da
+
+
+def _apply_dims(da, dims):
+    """Apply dimensions from coordinates table
+
+    Parameters
+    ----------
+    da : DataArray, Dataset
+        DataArray of which coordinates should be cmorized.
+    dims : dict
+        Dictionary with dimension names a keys and cmor coordinate
+        table entries as values.
 
     """
-    for var in ds.data_vars:
-        dims = ds[var].attrs.get("dimensions")
-        dims = {d: coords_table[d] for d in dims.split()}
-        ds = _apply_dims(ds, dims, coords_table)
-        # add coordinates attribute, e.g., for 0D coordinate variables
-        # e.g., height2m, etc...
-        coordinates = " ".join(
-            [d["out_name"] for d in dims.values() if d["out_name"] not in ds.indexes]
-        )
 
-        if coordinates:
-            print(f"coordinates: {coordinates}")
-            ds[var].attrs["coordinates"] = coordinates
-
-        # del ds[var].attrs["dimensions"]
-    return ds
-
-
-def _apply_dims(da, dims, coords_table):
-    """Apply dimensions from coordinates table"""
-
+    # d is a cmor coordinate table key, v is the coordinates table entry
     for d, v in dims.items():
-        # we find the coordinate already by its correct cf name
-        if d in da.coords:
+        # we find the coordinate already by its correct cf out_name
+        if v["out_name"] in da.coords:
             da = _add_coord(da, d, v)
             continue
 
@@ -174,27 +182,31 @@ def _apply_dims(da, dims, coords_table):
     return da
 
 
-def _add_coord(da, d, axis_entry):
-    """Add coordinate attributes from coordinates table"""
-    out_name = axis_entry["out_name"]
-    da = da.cf.rename({d: out_name})
-    da.coords[out_name].attrs = axis_entry
-    dims = da.coords[out_name].dims
-    if len(dims) == 1:
-        da = da.swap_dims({dims[0]: out_name})
+def _interpret_var_dims(ds, coords_table):
+    """Interpret variable dimensions attribute.
 
-    dtype = axis_entry.get("type")
-    if dtype:
-        da[out_name] = da[out_name].astype(dtype)
+    This will look up the dimensions defined for variables
+    in the mip table and update coordinates acoording to
+    meta data in the coordinates table.
 
-    requested = axis_entry.get("requested")
-    if requested:
-        requested = list(map(float, requested))
-        # print(f"requested: {requested}")
-        # print(f"values: {da[out_name].values}")
-        assert np.allclose(da[out_name].values, requested)
+    """
+    for var in ds.data_vars:
+        print(var)
+        dims = ds[var].attrs.get("dimensions")
+        dims = {d: coords_table[d] for d in dims.split()}
+        ds = _apply_dims(ds, dims)
+        # add coordinates attribute, e.g., for 0D coordinate variables
+        # e.g., height2m, etc...
+        coordinates = " ".join(
+            [d["out_name"] for d in dims.values() if d["out_name"] not in ds.indexes]
+        )
 
-    return da
+        if coordinates:
+            print(f"coordinates: {coordinates}")
+            ds[var].attrs["coordinates"] = coordinates
+
+        # del ds[var].attrs["dimensions"]
+    return ds
 
 
 def _add_version_attr(ds):
