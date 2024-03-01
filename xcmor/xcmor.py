@@ -18,15 +18,18 @@ def _get_x_y_coords(obj):
     obj = obj.cf.guess_coord_axis()
     X = None
     Y = None
+    # cfxr finds the X and Y coordinates right away
     if "X" in obj.cf.coords and "Y" in obj.cf.coords:
         X = obj.cf["X"]
         Y = obj.cf["Y"]
+    # cfxr finds longitude and latitude, let's check if they are 1D
     elif "longitude" in obj.cf.coords and "latitude" in obj.cf.coords:
         lon = obj.cf["longitude"]
         lat = obj.cf["latitude"]
         if lon.ndim == 1 and lat.ndim == 1:
             X = lon
             Y = lat
+    # ensure the attributes to make CF conform
     if X is not None and Y is not None:
         X.attrs["axis"] = "X"
         Y.attrs["axis"] = "Y"
@@ -34,7 +37,12 @@ def _get_x_y_coords(obj):
 
 
 def _get_lon_lat(obj):
-    """Return lon and lat extracted from ds."""
+    """Return lon and lat extracted from ds
+
+    Use cf_xarray to identify longitude and latitude coordinates.
+    Might be 1D or 2D coordinates.
+
+    """
     obj = obj.copy().cf.guess_coord_axis()
     try:
         lon = obj.cf["longitude"]
@@ -46,6 +54,12 @@ def _get_lon_lat(obj):
 
 
 def _is_curvilinear(obj):
+    """Check for curvilinear
+
+    Pretty naive definition here, curvilinear for us here simply
+    means if longitude and latitude are not 1D coordinates.
+
+    """
     lon, lat = _get_lon_lat(obj)
     return lon.ndim > 1 and lat.ndim > 1
 
@@ -64,6 +78,10 @@ def _add_var_attrs(ds, mip_table):
             del ds[v].attrs["modeling_realm"]
 
     return ds
+
+
+def _interpret_var_attr(attr, value):
+    pass
 
 
 def _interpret_var_attrs(ds, mip_table):
