@@ -121,12 +121,14 @@ def _interpret_var_attrs(ds, mip_table):
 def _add_coord(da, d, axis_entry):
     """Add coordinate attributes from coordinates table"""
     out_name = axis_entry["out_name"]
+
     da = da.cf.rename({d: out_name})
 
     da.coords[out_name].attrs = {k: v for k, v in axis_entry.items() if v}
 
     dims = da.coords[out_name].dims
 
+    # this is a coordinate variable
     if len(dims) == 1:
         da = da.swap_dims({dims[0]: out_name})
 
@@ -335,7 +337,7 @@ def cmorize(
     coords_table=None,
     dataset_table=None,
     cv_table=None,
-    mapping=None,
+    mapping_table=None,
     guess=True,
 ):
     """Lazy cmorization.
@@ -361,8 +363,8 @@ def cmorize(
     cv_table: dict, str
         The controlled vocabulary table, can either be a dictionary or a path to a cmor table
         in json format.
-    mapping: dict
-        The mapping table mapping input variable names to cmor table axis entry keys.
+    mapping_table: dict
+        The mapping table maps input variable names to mip table variable keys.
 
     Returns
     -------
@@ -380,14 +382,16 @@ def cmorize(
     if guess is True:
         ds = ds.cf.guess_coord_axis(verbose=False)
 
-    # ensure grid mappgins and cell measures in coords.
+    # ensure grid mappings and bounds in coords, not in data_vars
     ds = xr.decode_cf(ds, decode_coords="all")
 
-    if mapping is not None:
-        ds = ds.rename({v: (mapping.get(v) or v) for v in ds})
+    if mapping_table is not None:
+        ds = ds.rename_vars({v: (mapping_table.get(v) or v) for v in ds})
 
+    # add variable attributes from mip table entries
     ds = _add_var_attrs(ds, mip_table.get("variable_entry") or mip_table)
 
+    # interprets variable attributes
     ds = _interpret_var_attrs(ds, mip_table.get("variable_entry") or mip_table)
 
     if coords_table:
