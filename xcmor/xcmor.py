@@ -4,6 +4,7 @@ from datetime import date
 # from warnings import warn
 import cf_xarray as cfxr  # noqa
 import numpy as np
+import xarray as xr
 from xarray import DataArray
 
 from .log import get_logger
@@ -67,15 +68,15 @@ def _is_curvilinear(obj):
 def _add_var_attrs(ds, mip_table):
     """add variable attributes"""
 
-    for v in ds.data_vars:
-        ds[v].attrs = mip_table[v]
-        ds.attrs["variable_id"] = v
-        if mip_table[v].get("frequency"):
-            ds.attrs["frequency"] = mip_table[v].get("frequency")
-            del ds[v].attrs["frequency"]
-        if mip_table[v].get("modeling_realm"):
-            ds.attrs["realm"] = mip_table[v].get("modeling_realm")
-            del ds[v].attrs["modeling_realm"]
+    for var in ds.data_vars:
+        ds[var].attrs = {k: v for k, v in mip_table[var].items() if v}
+        ds.attrs["variable_id"] = var
+        if mip_table[var].get("frequency"):
+            ds.attrs["frequency"] = mip_table[var].get("frequency")
+            del ds[var].attrs["frequency"]
+        if mip_table[var].get("modeling_realm"):
+            ds.attrs["realm"] = mip_table[var].get("modeling_realm")
+            del ds[var].attrs["modeling_realm"]
 
     return ds
 
@@ -107,11 +108,9 @@ def _interpret_var_attrs(ds, mip_table):
         del ds[v].attrs["out_name"]
 
         valid_min, valid_max = attrs.get("valid_min"), attrs.get("valid_max")
-        del ds[v].attrs["valid_min"]
-        del ds[v].attrs["valid_max"]
         if valid_min:
             assert ds[v].min() >= valid_min
-
+            del ds[v].attrs["valid_min"]
         if valid_max:
             assert ds[v].max() <= valid_max
             del ds[v].attrs["valid_max"]
@@ -123,8 +122,11 @@ def _add_coord(da, d, axis_entry):
     """Add coordinate attributes from coordinates table"""
     out_name = axis_entry["out_name"]
     da = da.cf.rename({d: out_name})
-    da.coords[out_name].attrs = axis_entry
+
+    da.coords[out_name].attrs = {k: v for k, v in axis_entry.items() if v}
+
     dims = da.coords[out_name].dims
+
     if len(dims) == 1:
         da = da.swap_dims({dims[0]: out_name})
 
@@ -182,7 +184,7 @@ def _apply_dims(da, dims):
     return da
 
 
-def _interpret_var_dims(ds, coords_table):
+def _interpret_var_dims(ds, coords_table, remove_dims_attr=True):
     """Interpret variable dimensions attribute.
 
     This will look up the dimensions defined for variables
@@ -191,21 +193,25 @@ def _interpret_var_dims(ds, coords_table):
 
     """
     for var in ds.data_vars:
-        print(var)
         dims = ds[var].attrs.get("dimensions")
         dims = {d: coords_table[d] for d in dims.split()}
         ds = _apply_dims(ds, dims)
         # add coordinates attribute, e.g., for 0D coordinate variables
-        # e.g., height2m, etc...
+        # e.g., height2m, if not a dataarray index.
         coordinates = " ".join(
-            [d["out_name"] for d in dims.values() if d["out_name"] not in ds.indexes]
+            [
+                d["out_name"]
+                for d in dims.values()
+                if d["out_name"] not in ds[var].indexes and d["out_name"] in ds.coords
+            ]
         )
 
         if coordinates:
-            print(f"coordinates: {coordinates}")
             ds[var].attrs["coordinates"] = coordinates
 
-        # del ds[var].attrs["dimensions"]
+        if remove_dims_attr is True:
+            del ds[var].attrs["dimensions"]
+
     return ds
 
 
@@ -330,6 +336,7 @@ def cmorize(
     dataset_table=None,
     cv_table=None,
     mapping=None,
+    guess=True,
 ):
     """Lazy cmorization.
 
@@ -362,30 +369,29 @@ def cmorize(
     Cmorized Dataset.
 
     """
+    guess = True
 
     ds = ds.copy()
 
-    ds = ds.cf.guess_coord_axis(verbose=False)
-
-    if coords_table is None:
-        coords_table = {}
-    else:
-        coords_table = coords_table.get("axis_entry") or coords_table
-
-    if mapping is None:
-        mapping = {}
-
+    # ensure dataset
     if isinstance(ds, DataArray):
         ds = ds.to_dataset()
 
-    ds = ds.rename({v: (mapping.get(v) or v) for v in ds})
+    if guess is True:
+        ds = ds.cf.guess_coord_axis(verbose=False)
+
+    # ensure grid mappgins and cell measures in coords.
+    ds = xr.decode_cf(ds, decode_coords="all")
+
+    if mapping is not None:
+        ds = ds.rename({v: (mapping.get(v) or v) for v in ds})
 
     ds = _add_var_attrs(ds, mip_table.get("variable_entry") or mip_table)
 
     ds = _interpret_var_attrs(ds, mip_table.get("variable_entry") or mip_table)
 
     if coords_table:
-        ds = _interpret_var_dims(ds, coords_table)
+        ds = _interpret_var_dims(ds, coords_table.get("axis_entry") or coords_table)
 
     if dataset_table:
         ds = _update_global_attrs(ds, dataset_table)
