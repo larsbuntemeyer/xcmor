@@ -118,23 +118,46 @@ def _interpret_var_attrs(ds, mip_table):
     return ds
 
 
-def _add_coord(da, d, axis_entry):
+def _find_coord_key(da, axis_entry):
+    keys = ["out_name", "standard_name", "axis"]
+    for k in keys:
+        if axis_entry[k] in da.cf.coords or axis_entry[k] in da.coords:
+            # print(f"found {v[k]} by {k}")
+            return axis_entry[k]
+    return None
+
+
+def _add_coord_attrs(da, axis_entry):
     """Add coordinate attributes from coordinates table"""
+
     out_name = axis_entry["out_name"]
+    coord_key = out_name
 
-    da = da.cf.rename({d: out_name})
+    if coord_key not in da.coords:
+        coord_key = _find_coord_key(da, axis_entry)
 
+    if coord_key is None:
+        # we could not find the coordinate in the dataset
+        logger.info(f"adding coordinate: {out_name}")
+        value = float(axis_entry["value"])
+        da = da.assign_coords({out_name: DataArray(value)})
+    else:
+        # rename coord key to actual coordinate out_name
+        da = da.cf.rename({coord_key: out_name})
+
+    # add required attributes
     da.coords[out_name].attrs = {k: v for k, v in axis_entry.items() if v}
 
     dims = da.coords[out_name].dims
 
-    # this is a coordinate variable
+    # this is a coordinate variable, swap dims
     if len(dims) == 1:
         da = da.swap_dims({dims[0]: out_name})
 
+    # ensure dtype
     dtype = axis_entry.get("type")
     if dtype:
-        da[out_name] = da[out_name].astype(dtype)
+        da[out_name] = da[out_name].astype(dtype_map.get(dtype) or dtype)
 
     requested = axis_entry.get("requested")
     if requested:
@@ -161,32 +184,34 @@ def _apply_dims(da, dims):
 
     # d is a cmor coordinate table key, v is the coordinates table entry
     for d, v in dims.items():
+        da = _add_coord_attrs(da, v)
         # we find the coordinate already by its correct cf out_name
-        if v["out_name"] in da.coords:
-            da = _add_coord(da, d, v)
-            continue
+        # if v["out_name"] in da.coords:
+        #     da = _add_coord_attrs(da, d, v)
+        #     continue
 
-        # search for a coordinate by attributes (using cf_xarray)
-        keys = ["out_name", "standard_name", "axis"]
-        for k in keys:
-            if v[k] in da.cf.coords or v[k] in da.coords:
-                # print(f"found {v[k]} by {k}")
-                da = _add_coord(da, v[k], v)
-                break
+        # # search for a coordinate by attributes (using cf_xarray)
+        # keys = ["out_name", "standard_name", "axis"]
+        # for k in keys:
+        #     if v[k] in da.cf.coords or v[k] in da.coords:
+        #         # print(f"found {v[k]} by {k}")
+        #         da = _add_coord_attrs(da, v[k], v)
+        #         break
 
-        # seems to be a scalar coordinate that we need to create
-        if v["out_name"] not in da.coords:
-            logger.info(f"adding coordinate: {d}")
-            value = float(v["value"])
-            dtype = v["type"]
-            coord = DataArray(value).astype(dtype)
-            da = da.assign_coords({v["out_name"]: coord})
-            da.coords[v["out_name"]].attrs = v
+        # # seems to be a scalar coordinate that we need to create
+        # if v["out_name"] not in da.coords:
+        #     logger.info(f"adding coordinate: {d}")
+        #     value = float(v["value"])
+        #     coord = DataArray(value)
+        #     dtype = v["type"]
+        #     coord = DataArray(value).astype(dtype)
+        #     da = da.assign_coords({v["out_name"]: coord})
+        #     da.coords[v["out_name"]].attrs = v
 
     return da
 
 
-def _interpret_var_dims(ds, coords_table, remove_dims_attr=True):
+def _interpret_var_dims(ds, coords_table, remove_dims_attr=True, drop=True):
     """Interpret variable dimensions attribute.
 
     This will look up the dimensions defined for variables
@@ -194,9 +219,12 @@ def _interpret_var_dims(ds, coords_table, remove_dims_attr=True):
     meta data in the coordinates table.
 
     """
+    all_dims = []
+
     for var in ds.data_vars:
         dims = ds[var].attrs.get("dimensions")
         dims = {d: coords_table[d] for d in dims.split()}
+
         ds = _apply_dims(ds, dims)
         # add coordinates attribute, e.g., for 0D coordinate variables
         # e.g., height2m, if not a dataarray index.
@@ -213,6 +241,15 @@ def _interpret_var_dims(ds, coords_table, remove_dims_attr=True):
 
         if remove_dims_attr is True:
             del ds[var].attrs["dimensions"]
+
+        all_dims.extend([v["out_name"] for v in dims.values()])
+
+    logger.debug(f"added coordinates: {list(all_dims)}")
+    # drop unneccessary coordinates
+    if drop is True:
+        drops = [c for c in ds.coords if c not in list(all_dims)]
+        logger.debug(f"dropping coordinates: {drops}")
+        ds = ds.drop(drops)
 
     return ds
 
@@ -337,6 +374,7 @@ def cmorize(
     coords_table=None,
     dataset_table=None,
     cv_table=None,
+    grids_table=None,
     mapping_table=None,
     guess=True,
 ):
@@ -362,6 +400,9 @@ def cmorize(
         in json format.
     cv_table: dict, str
         The controlled vocabulary table, can either be a dictionary or a path to a cmor table
+        in json format.
+    grids_table: dict, str
+        The grids table, can either be a dictionary or a path to a cmor table
         in json format.
     mapping_table: dict
         The mapping table maps input variable names to mip table variable keys.
