@@ -498,7 +498,7 @@ class Cmorizer:
         """List required global attributes."""
         return self.tables.cv["CV"].get("required_global_attributes")
 
-    def cmorize(self, ds, mip_table, dataset_table, mapping=None):
+    def cmorize(self, ds, mip_table, dataset_table, mapping_table=None):
         """Lazy cmorization.
 
         Cmorizes an xarray Dataset or DataArray object. The cmorizations tries
@@ -516,8 +516,8 @@ class Cmorizer:
         dataset_table : dict, str
             The input dataset cmor table, can either be a dictionary or a path to a cmor table
             in json format.
-        mapping : dict
-            The mapping table mapping input variable names to cmor table axis entry keys.
+        mapping_table: dict
+            The mapping table maps input variable names to mip table variable keys.
 
         Returns
         -------
@@ -547,5 +547,5 @@ class Cmorizer:
             dataset_table=dataset_table,
             coords_table=self.tables.coords,
             cv_table=self.tables.cv,
-            mapping=mapping,
+            mapping_table=mapping_table,
         )
