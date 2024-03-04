@@ -5,6 +5,7 @@ logger = get_logger(__name__)
 
 
 class rules:
+    # attributes are dropped after interpretation
     drop = True
 
     @classmethod
@@ -67,3 +68,23 @@ class rules:
         if sname not in table.keys():
             raise Exception(f"{sname} is not a valid standard name.")
         return obj
+
+    # @classmethod
+    # def frequency(cls, obj):
+    #     raise NotImplementedError
+
+    # @classmethod
+    # def ok_min_mean_abs(cls, obj):
+    #     raise NotImplementedError
+
+    # @classmethod
+    # def ok_max_mean_abs(cls, obj):
+    #     raise NotImplementedError
+
+    # @classmethod
+    # def cell_measures(cls, obj):
+    #     raise NotImplementedError
+
+    # @classmethod
+    # def cell_methods(cls, obj):
+    #     raise NotImplementedError
