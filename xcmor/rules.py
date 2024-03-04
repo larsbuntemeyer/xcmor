@@ -13,8 +13,7 @@ class rules:
         dtype = obj.attrs["type"]
         if obj.dtype != dtype_map[dtype]:
             logger.warning(
-                #   f"converting {obj.name or "data"} from "
-                f"{obj.dtype} to {dtype_map[dtype]}"
+                f"converting {obj.name or 'data'} from {obj.dtype} to {dtype_map[dtype]}"
             )
             obj = obj.astype(dtype_map[dtype])
         if cls.drop is True:
