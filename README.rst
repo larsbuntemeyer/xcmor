@@ -18,6 +18,10 @@ xcmor
     :target: https://xcmor.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
+.. image:: https://mybinder.org/badge_logo.svg
+    :target: https://mybinder.org/v2/gh/larsbuntemeyer/xcmor/HEAD?labpath=doc%2Fexamples%2Fintroduction.ipynb
+    :alt: binder
+
 Lazy in-memory cmorization with `xarray <https://docs.xarray.dev>`_.
 
 Motivation
