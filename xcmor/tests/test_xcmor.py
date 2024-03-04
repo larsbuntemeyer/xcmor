@@ -3,6 +3,7 @@ import xarray as xr
 from cf_xarray.datasets import rotds
 
 from ..datasets import plev_ds, reg_ds
+from ..mapping import dtype_map
 from ..xcmor import (
     Cmorizer,
     _add_var_attrs,
@@ -129,9 +130,29 @@ def test_cmorize():
 
     for var in ds_out.data_vars:
         da = ds_out[var]
-        # ensure cmorizer does not change values
+        # ensure cmorizer does not change values but datatype
         np.testing.assert_allclose(da, ds["temperature"])
         # test for expected attributes
+        for k in expected_var_attrs:
+            assert da.attrs[k] == mip_table[var][k]
+        for k in expected_global_attrs:
+            assert ds_out.attrs[k] == mip_table[var][k]
+
+    # test cmorization of dataset wiht two variables and a mapping table
+    ds_out = cmorize(
+        reg_ds,
+        mip_table=mip_amon,
+        coords_table=coords,
+        dataset_table=dataset,
+        mapping_table={"temperature": "tas", "precipitation": "pr"},
+    )
+
+    assert "tas" in ds_out
+    assert "pr" in ds_out
+
+    for var in ds_out:
+        da = ds_out[var]
+        assert da.dtype == dtype_map["real"]
         for k in expected_var_attrs:
             assert da.attrs[k] == mip_table[var][k]
         for k in expected_global_attrs:
