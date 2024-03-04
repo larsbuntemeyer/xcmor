@@ -10,6 +10,7 @@ from xarray import DataArray
 from .log import get_logger
 from .mapping import dtype_map
 from .resources import get_project_tables
+from .rules import rules
 
 logger = get_logger(__name__)
 
@@ -96,24 +97,30 @@ def _interpret_var_attrs(ds, mip_table):
     """
 
     for v in ds.data_vars:
-        attrs = ds[v].attrs
-        if ds[v].dtype != dtype_map[attrs["type"]]:
-            logger.warning(
-                f"converting {v} from {ds[v].dtype} to {dtype_map[attrs['type']]}"
-            )
-            ds[v] = ds[v].astype(dtype_map[attrs["type"]])
-        del ds[v].attrs["type"]
+        da = ds[v]
+        for attr in da.attrs.copy():
+            if hasattr(rules, attr):
+                da = getattr(rules, attr)(da)
+        ds = ds.assign({da.name: da})  # .drop_vars(v)
 
-        ds.rename({v: attrs.get("out_name") or v})
-        del ds[v].attrs["out_name"]
+        # attrs = ds[v].attrs
+        # if ds[v].dtype != dtype_map[attrs["type"]]:
+        #     logger.warning(
+        #         f"converting {v} from {ds[v].dtype} to {dtype_map[attrs['type']]}"
+        #     )
+        #     ds[v] = ds[v].astype(dtype_map[attrs["type"]])
+        # del ds[v].attrs["type"]
 
-        valid_min, valid_max = attrs.get("valid_min"), attrs.get("valid_max")
-        if valid_min:
-            assert ds[v].min() >= valid_min
-            del ds[v].attrs["valid_min"]
-        if valid_max:
-            assert ds[v].max() <= valid_max
-            del ds[v].attrs["valid_max"]
+        # ds.rename({v: attrs.get("out_name") or v})
+        # del ds[v].attrs["out_name"]
+
+        # valid_min, valid_max = attrs.get("valid_min"), attrs.get("valid_max")
+        # if valid_min:
+        #     assert ds[v].min() >= valid_min
+        #     del ds[v].attrs["valid_min"]
+        # if valid_max:
+        #     assert ds[v].max() <= valid_max
+        #     del ds[v].attrs["valid_max"]
 
     return ds
 
