@@ -9,5 +9,6 @@ dependencies:
   - cf_xarray
   - pooch
   - pytest
+  - compliance-checker
   - pip:
     - git+https://github.com/larsbuntemeyer/xcmor
