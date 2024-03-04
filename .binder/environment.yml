@@ -1,0 +1,12 @@
+name: xcmor
+channels:
+  - conda-forge
+dependencies:
+  - python=3
+  - netcdf4
+  - pip
+  - xarray
+  - cf_xarray
+  - pooch
+   - pip:
+    - git+https://github.com/larsbuntemeyer/xcmor
