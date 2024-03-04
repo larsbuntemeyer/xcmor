@@ -7,7 +7,7 @@ def create_regular_ds():
     np.random.seed(0)
     temperature = 15 + 8 * np.random.randn(2, 2, 3)
     precipitation = 10 * np.random.rand(2, 2, 3)
-    lon = [-99.83, -99.32]
+    lon = [-99.83 + 180.0, -99.32 + 180.0]
     lat = [42.25, 42.21]
     time = pd.date_range("2014-09-06", periods=3)
     reference_time = pd.Timestamp("2014-09-05")

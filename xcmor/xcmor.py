@@ -8,11 +8,41 @@ import xarray as xr
 from xarray import DataArray
 
 from .log import get_logger
-from .mapping import dtype_map
 from .resources import get_project_tables
 from .rules import rules
 
 logger = get_logger(__name__)
+
+
+def _encode_time(time):
+    """Encode time units and calendar"""
+    cf_units = time.attrs.get("units")
+    if cf_units is None:
+        cf_units = "days since ?"
+    else:
+        del time.attrs["units"]
+    start_format = "%Y-%m-%dT%H:%M:%S"
+    start_str = f"{time[0].dt.strftime(start_format).item()}"
+    units = cf_units.replace("?", start_str)
+    logger.debug(f"setting time units: {units}")
+    time.encoding["units"] = units
+    return time
+
+
+def _units_convert(da, cf_units, format=None):
+    """Use pint_xarray to convert units"""
+    import pint_xarray  # noqa
+    from cf_xarray.units import units  # noqa
+
+    if format is None:
+        format = "cf"
+    if units.Unit(da.units) != units.Unit(cf_units):
+        logger.warn(
+            f"converting units {da.units} from input data to CF units {cf_units}"
+        )
+        da_quant = da.pint.quantify()
+        da = da_quant.pint.to(cf_units).pint.dequantify(format=format)
+    return da
 
 
 def _get_x_y_coords(obj):
@@ -125,6 +155,32 @@ def _interpret_var_attrs(ds, mip_table):
     return ds
 
 
+def _interpret_coord_attrs(ds):
+    """Apply coordinates attributes.
+
+    This will interpret attributes found in the mip table, e.g.,
+    valid_min, valid_max, convert dtypes, etc...
+    Once attributes were interpreted they are removed from the
+    variables attributes dictionary.
+
+    """
+
+    for v in ds.coords:
+        da = ds.coords[v]
+        logger.info(v)
+        for attr in da.attrs.copy():
+            logger.info(attr)
+            if hasattr(rules, attr):
+                da = getattr(rules, attr)(da)
+        ds = ds.assign_coords({da.name: da})  # .drop_vars(v)
+
+    if "T" in ds.cf.coords:
+        time = ds.cf["time"]
+        ds = ds.cf.assign_coords(T=_encode_time(time))
+
+    return ds
+
+
 def _find_coord_key(da, axis_entry):
     keys = ["out_name", "standard_name", "axis"]
     for k in keys:
@@ -162,9 +218,9 @@ def _add_coord_attrs(da, axis_entry):
         da = da.swap_dims({dims[0]: out_name})
 
     # ensure dtype
-    dtype = axis_entry.get("type")
-    if dtype:
-        da[out_name] = da[out_name].astype(dtype_map.get(dtype) or dtype)
+    # dtype = axis_entry.get("type")
+    # if dtype:
+    #    da[out_name] = da[out_name].astype(dtype_map.get(dtype) or dtype)
 
     requested = axis_entry.get("requested")
     if requested:
@@ -270,7 +326,13 @@ def _add_version_attr(ds):
 
 
 def _update_global_attrs(ds, dataset_table):
-    ds.attrs.update({k: v for k, v in dataset_table.items() if not k.startswith("#")})
+    ds.attrs.update(
+        {
+            k: v
+            for k, v in dataset_table.items()
+            if (not k.startswith("#") and not k.startswith("_"))
+        }
+    )
 
     return ds
 
@@ -441,6 +503,7 @@ def cmorize(
 
     if coords_table:
         ds = _interpret_var_dims(ds, coords_table.get("axis_entry") or coords_table)
+        ds = _interpret_coord_attrs(ds)
 
     if dataset_table:
         ds = _update_global_attrs(ds, dataset_table)
