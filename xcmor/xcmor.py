@@ -317,7 +317,7 @@ def _add_derived_attr(ds, attr, cv_values):
         # containing that description, e.g. institution_id
         v = cv_values
         k = attr.replace("_id", "")
-        logger.info(f"for attribute '{k}' --> add value '{v}'")
+        logger.debug(f"for attribute '{k}' --> add value '{v}'")
         ds.attrs[k] = v
         return ds
 
@@ -327,7 +327,7 @@ def _add_derived_attr(ds, attr, cv_values):
         # adds the description, .e.g, frequency
         v = cv_values
         k = attr + "_info"
-        logger.info(f"for attribute '{k}' --> add value '{v}'")
+        logger.debug(f"for attribute '{k}' --> add value '{v}'")
         ds.attrs[k] = v
         return ds
 
@@ -337,19 +337,16 @@ def _add_derived_attr(ds, attr, cv_values):
         if isinstance(v, list) and actual_value:
             if actual_value not in v:
                 logger.warn(
-                    f"actual_value '{actual_value}' for {k} not in list of expected values: {v}"
+                    f"attribute '{attr}' has value '{ds.attrs.get(attr)}' but attribute '{k}' has value '{actual_value}' which is not in the list of expected values: {v}"
                 )
         elif isinstance(v, str) and actual_value is None:
-            message = (
-                f"for attribute '{k}' --> add value '{v}' because attribute '{attr}' in CV "
-                f"asks for attribute '{k}' to be set to '{v}'"
-            )
+            message = f"attribute '{attr}' has value '{ds.attrs.get(attr)}' and requires attribute '{k}' to be set to '{v}'"
             logger.info(message)
             ds.attrs[k] = v
         elif isinstance(v, str) and actual_value:
             if actual_value != v:
                 logger.warn(
-                    f"attribute '{k}' is set to '{actual_value}' but CV has '{v}' derived from '{attr}'!"
+                    f"attribute '{attr}' has value '{ds.attrs.get(attr)}' but attribute '{k}' is set to '{actual_value}' but CV requires '{v}'!"
                 )
             ds.attrs[k] = v
 
