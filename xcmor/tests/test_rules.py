@@ -34,3 +34,11 @@ def test_rules():
     with pytest.raises(Exception) as e_info:
         rules.standard_name(da)
         assert e_info == f"{da.standard_name} is not a valid standard name"
+
+    da.attrs = {
+        "valid_min": 0,
+    }
+    da[:] = [2.0, 4.0, 2.0, 9.0]
+    with pytest.raises(Exception) as e_info:
+        rules.valid_min(da)
+        assert e_info == f"{da.name} is violating valid_min: {da.valid_min}"
