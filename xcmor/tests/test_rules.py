@@ -1,6 +1,7 @@
 import pytest
 import xarray as xr
 
+from ..mapping import dtype_map
 from ..rules import rules
 
 
@@ -23,6 +24,9 @@ def test_rules():
     for attr in da.attrs:
         if hasattr(rules, attr):
             da = getattr(rules, attr)(da)
+
+    assert da.name == "tas"
+    assert da.dtype == dtype_map["real"]
 
     da.attrs = {
         "standard_name": "air_temp",
