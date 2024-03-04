@@ -8,5 +8,6 @@ dependencies:
   - xarray
   - cf_xarray
   - pooch
+  - pytest
   - pip:
     - git+https://github.com/larsbuntemeyer/xcmor
