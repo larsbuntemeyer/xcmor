@@ -1,5 +1,3 @@
-import numpy as np
-
 from .log import get_logger
 from .mapping import dtype_map
 
@@ -78,15 +76,15 @@ class rules:
             )
         return obj
 
-    @classmethod
-    def requested(cls, obj):
-        requested = obj.attrs["requested"]
-        if requested:
-            requested = list(map(float, requested))
-        if not np.allclose(obj.values, requested):
-            raise Exception(
-                f"{obj.name or ' '} has not all inconsistent values: {requested} "
-            )
+    # @classmethod
+    # def requested(cls, obj):
+    #     requested = obj.attrs["requested"]
+    #     if requested:
+    #         requested = list(map(float, requested))
+    #     if not np.allclose(obj.values, requested):
+    #         raise Exception(
+    #             f"{obj.name or ' '} has not all inconsistent values: {requested} "
+    #         )
 
     # @classmethod
     # def frequency(cls, obj):

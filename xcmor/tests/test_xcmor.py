@@ -23,6 +23,12 @@ expected_var_attrs = [
     "long_name",
 ]
 
+# def test_encode_time():
+
+#     expected = "days since 2014-09-06T00:00:00"
+#     time_out = _encode_time(reg_ds, cf_units="days since ?")
+#     assert time_out.encoding['units'] == expected
+
 
 def test_interpret_var_dims():
     ds = xr.Dataset(

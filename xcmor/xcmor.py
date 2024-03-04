@@ -14,19 +14,39 @@ from .rules import rules
 logger = get_logger(__name__)
 
 
-def _encode_time(time):
+def _encode_time(ds, cf_units=None):
     """Encode time units and calendar"""
-    cf_units = time.attrs.get("units")
+    time = ds.cf["time"]
+    print(time)
+    cf_units = cf_units or time.attrs.get("units") or time.encoding.get("units")
+
     if cf_units is None:
         cf_units = "days since ?"
     else:
-        del time.attrs["units"]
+        del ds.time.attrs["units"]
+
     start_format = "%Y-%m-%dT%H:%M:%S"
+
+    # check if time is datetime-like, maybe there is a better way?
+    # decode times if not datetime-like
+    try:
+        time.dt
+    except Exception:
+        cf_units = cf_units.replace("?", "1950")
+        logger.warning(
+            f"time axis does not seem to be datetime-like, encoding with units '{cf_units}'"
+        )
+
+        ds.time.attrs["units"] = cf_units  # .replace("?", "1950")
+        ds = xr.decode_cf(ds, decode_times=True, decode_coords=False)
+        return ds.time
+
     start_str = f"{time[0].dt.strftime(start_format).item()}"
     units = cf_units.replace("?", start_str)
+
     logger.debug(f"setting time units: {units}")
     time.encoding["units"] = units
-    return time
+    return ds.cf["time"]
 
 
 def _units_convert(da, cf_units, format=None):
@@ -112,10 +132,6 @@ def _add_var_attrs(ds, mip_table):
     return ds
 
 
-def _interpret_var_attr(attr, value):
-    pass
-
-
 def _interpret_var_attrs(ds, mip_table):
     """Apply variable attributes found in the mip table.
 
@@ -133,29 +149,10 @@ def _interpret_var_attrs(ds, mip_table):
                 da = getattr(rules, attr)(da)
         ds = ds.assign({da.name: da})  # .drop_vars(v)
 
-        # attrs = ds[v].attrs
-        # if ds[v].dtype != dtype_map[attrs["type"]]:
-        #     logger.warning(
-        #         f"converting {v} from {ds[v].dtype} to {dtype_map[attrs['type']]}"
-        #     )
-        #     ds[v] = ds[v].astype(dtype_map[attrs["type"]])
-        # del ds[v].attrs["type"]
-
-        # ds.rename({v: attrs.get("out_name") or v})
-        # del ds[v].attrs["out_name"]
-
-        # valid_min, valid_max = attrs.get("valid_min"), attrs.get("valid_max")
-        # if valid_min:
-        #     assert ds[v].min() >= valid_min
-        #     del ds[v].attrs["valid_min"]
-        # if valid_max:
-        #     assert ds[v].max() <= valid_max
-        #     del ds[v].attrs["valid_max"]
-
     return ds
 
 
-def _interpret_coord_attrs(ds):
+def _interpret_coord_attrs(ds, time_units=None):
     """Apply coordinates attributes.
 
     This will interpret attributes found in the mip table, e.g.,
@@ -167,16 +164,16 @@ def _interpret_coord_attrs(ds):
 
     for v in ds.coords:
         da = ds.coords[v]
-        logger.info(v)
+        # print(v, da)
+        # logger.info(v)
         for attr in da.attrs.copy():
-            logger.info(attr)
+            # logger.info(attr)
             if hasattr(rules, attr):
                 da = getattr(rules, attr)(da)
         ds = ds.assign_coords({da.name: da})  # .drop_vars(v)
 
-    if "T" in ds.cf.coords:
-        time = ds.cf["time"]
-        ds = ds.cf.assign_coords(T=_encode_time(time))
+    if "time" in ds.cf.coords:
+        ds = ds.cf.assign_coords(time=_encode_time(ds, time_units))
 
     return ds
 
@@ -443,6 +440,7 @@ def cmorize(
     grids_table=None,
     mapping_table=None,
     guess=True,
+    time_units=None,
 ):
     """Lazy cmorization.
 
@@ -472,6 +470,9 @@ def cmorize(
         in json format.
     mapping_table: dict
         The mapping table maps input variable names to mip table variable keys.
+    time_units: str
+        Time units for NetCDF encoding. Default is ``days since`` the beginning of the
+        time interval.
 
     Returns
     -------
@@ -503,7 +504,7 @@ def cmorize(
 
     if coords_table:
         ds = _interpret_var_dims(ds, coords_table.get("axis_entry") or coords_table)
-        ds = _interpret_coord_attrs(ds)
+        ds = _interpret_coord_attrs(ds, time_units)
 
     if dataset_table:
         ds = _update_global_attrs(ds, dataset_table)
@@ -565,7 +566,9 @@ class Cmorizer:
         """List required global attributes."""
         return self.tables.cv["CV"].get("required_global_attributes")
 
-    def cmorize(self, ds, mip_table, dataset_table, mapping_table=None):
+    def cmorize(
+        self, ds, mip_table, dataset_table, mapping_table=None, time_units=None
+    ):
         """Lazy cmorization.
 
         Cmorizes an xarray Dataset or DataArray object. The cmorizations tries
@@ -585,6 +588,9 @@ class Cmorizer:
             in json format.
         mapping_table: dict
             The mapping table maps input variable names to mip table variable keys.
+        time_units: str
+            Time units for NetCDF encoding. Default is ``days since`` the beginning of the
+            time interval.
 
         Returns
         -------
@@ -615,4 +621,5 @@ class Cmorizer:
             coords_table=self.tables.coords,
             cv_table=self.tables.cv,
             mapping_table=mapping_table,
+            time_units=time_units,
         )
