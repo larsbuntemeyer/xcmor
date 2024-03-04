@@ -17,7 +17,6 @@ logger = get_logger(__name__)
 def _encode_time(ds, cf_units=None):
     """Encode time units and calendar"""
     time = ds.cf["time"]
-    print(time)
     cf_units = cf_units or time.attrs.get("units") or time.encoding.get("units")
 
     if cf_units is None:
