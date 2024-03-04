@@ -1,3 +1,4 @@
+import pytest
 import xarray as xr
 
 from ..rules import rules
@@ -22,3 +23,10 @@ def test_rules():
     for attr in da.attrs:
         if hasattr(rules, attr):
             da = getattr(rules, attr)(da)
+
+    da.attrs = {
+        "standard_name": "air_temp",
+    }
+    with pytest.raises(Exception) as e_info:
+        rules.standard_name(da)
+        assert e_info == f"{da.standard_name} is not a valid standard name"
