@@ -50,19 +50,22 @@ def _encode_time(ds, cf_units=None):
     return time
 
 
-def _units_convert(da, cf_units, format=None):
+def _units_convert(da, format=None):
     """Use pint_xarray to convert units"""
     import pint_xarray  # noqa
     from cf_xarray.units import units  # noqa
 
     if format is None:
         format = "cf"
-    if units.Unit(da.units) != units.Unit(cf_units):
+    if units.Unit(da.original_units) != units.Unit(da.units):
         logger.warn(
-            f"converting units {da.units} from input data to CF units {cf_units}"
+            f"converting units {da.original_units} from input data to CF units {da.units}"
         )
-        da_quant = da.pint.quantify()
-        da = da_quant.pint.to(cf_units).pint.dequantify(format=format)
+        da_quant = da.pint.quantify(da.original_units)
+        da = da_quant.pint.to(da.units).pint.dequantify(format=format)
+        da.attrs[
+            "history"
+        ] = f"original data with units {da.original_units} converted to {da.units}"
     return da
 
 
@@ -139,14 +142,28 @@ def _add_var_attrs(ds, mip_table):
     """add variable attributes"""
 
     for var in ds.data_vars:
-        ds[var].attrs = {k: v for k, v in mip_table[var].items() if v}
-        ds.attrs["variable_id"] = var
-        if mip_table[var].get("frequency"):
-            ds.attrs["frequency"] = mip_table[var].get("frequency")
-            del ds[var].attrs["frequency"]
-        if mip_table[var].get("modeling_realm"):
-            ds.attrs["realm"] = mip_table[var].get("modeling_realm")
-            del ds[var].attrs["modeling_realm"]
+        da = ds[var]
+        mip_entry = mip_table[var]
+        for k, v in mip_entry.items():
+            if k in da.attrs and da.attrs[k] != v:
+                # warn if we overvwrite conflicting attributes
+                logger.warn(
+                    "{var}: conflicting value '{da.attrs[k]}' of attribute '{k}' with value '{v}' from mip table."
+                )
+                if k == "units":
+                    # keep original units for later interpretation
+                    da.attrs["original_units"] = v
+            da.attrs[k] = v
+
+        # derive global attributes
+        ds.attrs["variable_id"] = mip_entry.get("out_name") or var
+
+        if mip_entry.get("frequency"):
+            ds.attrs["frequency"] = mip_entry["frequency"]
+            del da.attrs["frequency"]
+        if mip_entry.get("modeling_realm"):
+            ds.attrs["realm"] = mip_entry["modeling_realm"]
+            del da.attrs["modeling_realm"]
 
     return ds
 
@@ -166,6 +183,10 @@ def _interpret_var_attrs(ds, mip_table):
         for attr in da.attrs.copy():
             if hasattr(rules, attr):
                 da = getattr(rules, attr)(da)
+
+        # handle units
+        if "original_units" in da.attrs:
+            da = _units_convert(da)
         ds = ds.assign({da.name: da})
 
     return ds
