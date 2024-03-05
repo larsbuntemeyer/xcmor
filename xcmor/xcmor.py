@@ -3,13 +3,14 @@ from datetime import date
 
 # from warnings import warn
 import cf_xarray as cfxr  # noqa
-import numpy as np
 import xarray as xr
 from xarray import DataArray
 
 from .log import get_logger
 from .resources import get_project_tables
 from .rules import rules
+from .tests.tables import coords as coords_default
+from .utils import cf_table
 
 logger = get_logger(__name__)
 
@@ -115,6 +116,24 @@ def _is_curvilinear(obj):
     return lon.ndim > 1 and lat.ndim > 1
 
 
+def _guess_dims_attr(obj):
+    """Try to guess dimensions attribute"""
+    obj = obj.copy().cf.guess_coord_axis()
+    dimensions = []
+    try:
+        lon, lat = _get_lon_lat(obj)
+        dimensions.extend(["longitude", "latitude"])
+    except KeyError:
+        logger.warning(
+            f"Could not guess longitude and latitude coordinates from {list(obj.coords)}"
+        )
+    if "Z" in obj.cf.coords:
+        dimensions.append(obj.cf.coords["Z"].name)
+    if "time" in obj.cf.coords:
+        dimensions.append("time")
+    return dimensions
+
+
 def _add_var_attrs(ds, mip_table):
     """add variable attributes"""
 
@@ -178,6 +197,8 @@ def _interpret_coord_attrs(ds, time_units=None):
 
 
 def _find_coord_key(da, axis_entry):
+    """find datarray coordinate by cf attributes from coordinates table"""
+
     keys = ["out_name", "standard_name", "axis"]
     for k in keys:
         if axis_entry[k] in da.cf.coords or axis_entry[k] in da.coords:
@@ -209,21 +230,9 @@ def _add_coord_attrs(da, axis_entry):
 
     dims = da.coords[out_name].dims
 
-    # this is a coordinate variable, swap dims
+    # this is a coordinate variable (not auxilliary), swap dims
     if len(dims) == 1:
         da = da.swap_dims({dims[0]: out_name})
-
-    # ensure dtype
-    # dtype = axis_entry.get("type")
-    # if dtype:
-    #    da[out_name] = da[out_name].astype(dtype_map.get(dtype) or dtype)
-
-    requested = axis_entry.get("requested")
-    if requested:
-        requested = list(map(float, requested))
-        # print(f"requested: {requested}")
-        # print(f"values: {da[out_name].values}")
-        assert np.allclose(da[out_name].values, requested)
 
     return da
 
@@ -243,7 +252,10 @@ def _apply_dims(da, dims):
 
     # d is a cmor coordinate table key, v is the coordinates table entry
     for d, v in dims.items():
-        da = _add_coord_attrs(da, v)
+        if v:
+            da = _add_coord_attrs(da, v)
+        else:
+            logger.warning(f"found no coordinate attributes for coordinate '{d}'")
         # we find the coordinate already by its correct cf out_name
         # if v["out_name"] in da.coords:
         #     da = _add_coord_attrs(da, d, v)
@@ -270,7 +282,7 @@ def _apply_dims(da, dims):
     return da
 
 
-def _interpret_var_dims(ds, coords_table, remove_dims_attr=True, drop=True):
+def _interpret_var_dims(ds, coords_table, drop=True):
     """Interpret variable dimensions attribute.
 
     This will look up the dimensions defined for variables
@@ -282,7 +294,14 @@ def _interpret_var_dims(ds, coords_table, remove_dims_attr=True, drop=True):
 
     for var in ds.data_vars:
         dims = ds[var].attrs.get("dimensions")
-        dims = {d: coords_table[d] for d in dims.split()}
+        if not dims:
+            dims = _guess_dims_attr(ds[var])
+            logger.debug(f"dims of {var}: {dims}")
+        else:
+            del ds[var].attrs["dimensions"]
+            dims = dims.split()
+
+        dims = {d: coords_table.get(d) or {"out_name": d} for d in dims}
 
         ds = _apply_dims(ds, dims)
         # add coordinates attribute, e.g., for 0D coordinate variables
@@ -297,9 +316,6 @@ def _interpret_var_dims(ds, coords_table, remove_dims_attr=True, drop=True):
 
         if coordinates:
             ds[var].attrs["coordinates"] = coordinates
-
-        if remove_dims_attr is True:
-            del ds[var].attrs["dimensions"]
 
         all_dims.extend([v["out_name"] for v in dims.values()])
 
@@ -485,6 +501,14 @@ def cmorize(
     # ensure dataset
     if isinstance(ds, DataArray):
         ds = ds.to_dataset()
+
+    if mip_table is None:
+        logger.debug("using default cf variable table")
+        mip_table = cf_table().to_dict(orient="index")
+
+    if coords_table is None:
+        logger.debug("using default coords table")
+        coords_table = coords_default
 
     if guess is True:
         ds = ds.cf.guess_coord_axis(verbose=False)

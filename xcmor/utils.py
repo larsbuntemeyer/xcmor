@@ -1,11 +1,17 @@
 import json
 import re
 import tempfile
+from os import path as op
 from warnings import warn
 
 import pandas as pd
 import xarray as xr
 import yaml
+
+
+def cf_table():
+    filename = op.join(op.dirname(__file__), "tables", "cf-variables.csv")
+    return pd.read_csv(filename, index_col="out_name")
 
 
 def table_to_dataframe(table, index_name=None):

@@ -2,13 +2,14 @@ import numpy as np
 import xarray as xr
 from cf_xarray.datasets import rotds
 
-from ..datasets import plev_ds, reg_ds
+from ..datasets import plev_ds, reg_ds, temp_ds
 from ..mapping import dtype_map
 from ..xcmor import (
     Cmorizer,
     _add_var_attrs,
     _get_lon_lat,
     _get_x_y_coords,
+    _guess_dims_attr,
     _interpret_var_dims,
     _is_curvilinear,
     cmorize,
@@ -28,6 +29,12 @@ expected_var_attrs = [
 #     expected = "days since 2014-09-06T00:00:00"
 #     time_out = _encode_time(reg_ds, cf_units="days since ?")
 #     assert time_out.encoding['units'] == expected
+
+
+def test_guess_dims_attr():
+    assert _guess_dims_attr(plev_ds) == ["longitude", "latitude", "lev", "time"]
+    assert _guess_dims_attr(reg_ds) == ["longitude", "latitude", "time"]
+    assert _guess_dims_attr(temp_ds) == ["longitude", "latitude", "time"]
 
 
 def test_interpret_var_dims():
