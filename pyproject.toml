@@ -1,10 +1,10 @@
 [project]
 name = "xcmor"
-description = "Lazy in-memory cmorization with xarray"
+description = "In-memory cmorization with xarray"
 readme = "README.rst"
 requires-python = ">=3.8"
 license = {file = "LICENSE"}
-keywords = ["xarray", "metadata", "CF conventions"]
+keywords = ["xarray", "metadata", "CF conventions", "cmor"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "License :: OSI Approved :: Apache Software License",
@@ -15,6 +15,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
     "xarray",
@@ -23,7 +24,7 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-all = ["matplotlib", "pint", "shapely", "regex", "rich", "pooch"]
+all = ["matplotlib", "pint", "pint-xarray", "pooch"]
 
 [project.urls]
 homepage = "https://xcmor.readthedocs.io"
@@ -42,7 +43,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["xcmor", "xcmor.tests"]
+packages = ["xcmor"]
 
 #[tool.setuptools.exclude-package-data]
 #xcmor = ["tests/*"]
@@ -142,5 +143,5 @@ ignore_missing_imports = true
 
 [tool.coverage.run]
 omit = [
-    "test.py"
+    "*/tests/*"
 ]
