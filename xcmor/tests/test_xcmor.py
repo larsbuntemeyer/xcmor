@@ -15,6 +15,7 @@ from ..xcmor import (
     _units_convert,
     cmorize,
 )
+from . import requires_pint_xarray
 from .tables import coords, dataset, mip_amon
 
 expected_var_attrs = [
@@ -32,6 +33,7 @@ expected_var_attrs = [
 #     assert time_out.encoding['units'] == expected
 
 
+@requires_pint_xarray
 def test_units_convert():
     ds = reg_ds.copy()
     da = ds.temperature
