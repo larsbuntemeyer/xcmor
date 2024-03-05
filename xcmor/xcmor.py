@@ -16,6 +16,15 @@ from .utils import cf_table
 logger = get_logger(__name__)
 
 
+def _transpose(ds):
+    """Transpose dataset to COARDS convention"""
+    axis = ["T", "Z", "Y", "X"]
+    cf_dims = list(ds.cf.dims.keys())
+    order = [ax for ax in axis if ax in cf_dims]
+
+    return ds.cf.transpose(*order)
+
+
 def _encode_time(ds, cf_units=None):
     """Encode time units and calendar"""
     time = ds.cf["time"]
@@ -562,6 +571,9 @@ def cmorize(
 
     # sort attributes
     ds.attrs = collections.OrderedDict(sorted(ds.attrs.items()))
+
+    # transpose to COARDS
+    ds = _transpose(ds)
 
     return ds
 
