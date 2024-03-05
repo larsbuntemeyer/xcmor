@@ -10,5 +10,6 @@ dependencies:
   - pooch
   - pytest
   - compliance-checker
+  - pint-xarray
   - pip:
     - git+https://github.com/larsbuntemeyer/xcmor
