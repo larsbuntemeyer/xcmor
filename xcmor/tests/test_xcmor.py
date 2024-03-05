@@ -12,8 +12,10 @@ from ..xcmor import (
     _guess_dims_attr,
     _interpret_var_dims,
     _is_curvilinear,
+    _units_convert,
     cmorize,
 )
+from . import requires_pint_xarray
 from .tables import coords, dataset, mip_amon
 
 expected_var_attrs = [
@@ -29,6 +31,29 @@ expected_var_attrs = [
 #     expected = "days since 2014-09-06T00:00:00"
 #     time_out = _encode_time(reg_ds, cf_units="days since ?")
 #     assert time_out.encoding['units'] == expected
+
+
+@requires_pint_xarray
+def test_units_convert():
+    ds = reg_ds.copy()
+    da = ds.temperature
+    da.attrs["original_units"] = "degC"
+    da.attrs["units"] = "K"
+    da_conv = _units_convert(da)
+    expected_data = np.array(
+        [
+            [
+                [302.26241877, 291.35125767, 295.97990387],
+                [306.07714559, 303.09046392, 280.33177696],
+            ],
+            [
+                [295.75070734, 286.93914233, 287.32424919],
+                [291.43478802, 289.30234857, 299.78418806],
+            ],
+        ]
+    )
+    np.testing.assert_allclose(da_conv, expected_data)
+    assert "original data with units degC converted to K" in da_conv.history
 
 
 def test_guess_dims_attr():

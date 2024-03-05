@@ -14,3 +14,4 @@ def _importorskip(modname):
 
 
 has_pooch, requires_pooch = _importorskip("pooch")
+has_pint_xarray, requires_pint_xarray = _importorskip("pint_xarray")
