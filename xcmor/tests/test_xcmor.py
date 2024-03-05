@@ -2,13 +2,14 @@ import numpy as np
 import xarray as xr
 from cf_xarray.datasets import rotds
 
-from ..datasets import plev_ds, reg_ds
+from ..datasets import plev_ds, reg_ds, temp_ds
 from ..mapping import dtype_map
 from ..xcmor import (
     Cmorizer,
     _add_var_attrs,
     _get_lon_lat,
     _get_x_y_coords,
+    _guess_dims_attr,
     _interpret_var_dims,
     _is_curvilinear,
     cmorize,
@@ -22,6 +23,18 @@ expected_var_attrs = [
     "cell_measures",
     "long_name",
 ]
+
+# def test_encode_time():
+
+#     expected = "days since 2014-09-06T00:00:00"
+#     time_out = _encode_time(reg_ds, cf_units="days since ?")
+#     assert time_out.encoding['units'] == expected
+
+
+def test_guess_dims_attr():
+    assert _guess_dims_attr(plev_ds) == ["longitude", "latitude", "lev", "time"]
+    assert _guess_dims_attr(reg_ds) == ["longitude", "latitude", "time"]
+    assert _guess_dims_attr(temp_ds) == ["longitude", "latitude", "time"]
 
 
 def test_interpret_var_dims():
@@ -93,27 +106,37 @@ def test_add_variable_attrs():
     assert result.frequency == mip_table["ta"]["frequency"]
 
 
-def test_cmorize_minimal():
+def test_cmorize_auto():
     ds = reg_ds.copy()
-    mip_table = mip_amon
     ds_out = cmorize(
-        ds.rename({"temperature": "ta", "precipitation": "pr"}),
-        mip_table=mip_table,
+        ds.rename({"temperature": "tas", "precipitation": "pr"}),
     )
 
     return ds_out
 
+
+def test_cmorize_minimal():
+    ds = reg_ds.copy()
+    mip_table = mip_amon
+    mapping_table = {"temperature": "tas", "precipitation": "pr"}
+    ds_out = cmorize(
+        ds.rename(mapping_table),
+        mip_table=mip_table,
+    )
+
     expected_global_attrs = ["frequency"]
 
-    for var in ds_out.data_vars:
-        da = ds_out[var]
+    for var in ds.data_vars:
+        cf_name = mapping_table.get(var)
+        assert cf_name in ds_out
+        cf_var = ds_out[cf_name]
         # ensure cmorizer does not change values
-        np.testing.assert_allclose(da, ds[var])
+        np.testing.assert_allclose(cf_var, ds[var])
         # test for expected attributes
         for k in expected_var_attrs:
-            assert da.attrs[k] == mip_table[var][k]
+            assert cf_var.attrs[k] == mip_table[cf_name][k]
         for k in expected_global_attrs:
-            assert ds_out.attrs[k] == mip_table[var][k]
+            assert ds_out.attrs[k] == mip_table[cf_name][k]
 
 
 def test_cmorize():

@@ -9,8 +9,13 @@ class rules:
     drop = True
 
     @classmethod
-    def type(cls, obj):
+    def type(cls, obj, time=False):
         """apply dtype rule to dataarray"""
+        if time is False:
+            axis = obj.attrs.get("axis")
+            # don't convert time variables.
+            if axis and axis == "T":
+                return obj
         dtype = obj.attrs["type"]
         if obj.dtype != dtype_map[dtype]:
             logger.warning(
@@ -36,7 +41,7 @@ class rules:
         valid_min = obj.attrs.get("valid_min")
         if valid_min:
             try:
-                assert obj.min() >= valid_min
+                assert obj.min() >= float(valid_min)
             except Exception:
                 raise Exception(
                     f"{obj.name or 'data'} is violating valid_min: {valid_min}"
@@ -50,10 +55,10 @@ class rules:
         valid_max = obj.attrs.get("valid_max")
         if valid_max:
             try:
-                assert obj.min() <= valid_max
+                assert obj.min() <= float(valid_max)
             except Exception:
                 raise Exception(
-                    f"{obj.name or 'data'} is violating valid_min: {valid_max}"
+                    f"{obj.name or 'data'} is violating valid_max: {valid_max}"
                 )
         if cls.drop is True:
             del obj.attrs["valid_max"]
@@ -66,8 +71,20 @@ class rules:
         sname = obj.attrs["standard_name"]
         info, table, aliases = parse_cf_standard_name_table()
         if sname not in table.keys():
-            raise Exception(f"{sname} is not a valid standard name.")
+            raise Exception(
+                f"'{obj.name+'': ' or ''}{sname} is not a valid standard name."
+            )
         return obj
+
+    # @classmethod
+    # def requested(cls, obj):
+    #     requested = obj.attrs["requested"]
+    #     if requested:
+    #         requested = list(map(float, requested))
+    #     if not np.allclose(obj.values, requested):
+    #         raise Exception(
+    #             f"{obj.name or ' '} has not all inconsistent values: {requested} "
+    #         )
 
     # @classmethod
     # def frequency(cls, obj):

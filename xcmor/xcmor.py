@@ -3,16 +3,66 @@ from datetime import date
 
 # from warnings import warn
 import cf_xarray as cfxr  # noqa
-import numpy as np
 import xarray as xr
 from xarray import DataArray
 
 from .log import get_logger
-from .mapping import dtype_map
 from .resources import get_project_tables
 from .rules import rules
+from .tests.tables import coords as coords_default
+from .utils import cf_table
 
 logger = get_logger(__name__)
+
+
+def _encode_time(ds, cf_units=None):
+    """Encode time units and calendar"""
+    time = ds.cf["time"]
+    cf_units = cf_units or time.attrs.get("units") or time.encoding.get("units")
+
+    if cf_units is None:
+        cf_units = "days since ?"
+    else:
+        del ds.time.attrs["units"]
+
+    start_format = "%Y-%m-%dT%H:%M:%S"
+
+    # check if time is datetime-like, maybe there is a better way?
+    # decode times if not datetime-like
+    try:
+        time.dt
+    except Exception:
+        cf_units = cf_units.replace("?", "1950")
+        logger.warning(
+            f"time axis does not seem to be datetime-like, encoding with units '{cf_units}'"
+        )
+
+        ds.time.attrs["units"] = cf_units  # .replace("?", "1950")
+        ds = xr.decode_cf(ds, decode_times=True, decode_coords=False)
+        return ds.time
+
+    start_str = f"{time[0].dt.strftime(start_format).item()}"
+    units = cf_units.replace("?", start_str)
+
+    logger.debug(f"setting time units: {units}")
+    time.encoding["units"] = units
+    return ds.cf["time"]
+
+
+def _units_convert(da, cf_units, format=None):
+    """Use pint_xarray to convert units"""
+    import pint_xarray  # noqa
+    from cf_xarray.units import units  # noqa
+
+    if format is None:
+        format = "cf"
+    if units.Unit(da.units) != units.Unit(cf_units):
+        logger.warn(
+            f"converting units {da.units} from input data to CF units {cf_units}"
+        )
+        da_quant = da.pint.quantify()
+        da = da_quant.pint.to(cf_units).pint.dequantify(format=format)
+    return da
 
 
 def _get_x_y_coords(obj):
@@ -66,6 +116,24 @@ def _is_curvilinear(obj):
     return lon.ndim > 1 and lat.ndim > 1
 
 
+def _guess_dims_attr(obj):
+    """Try to guess dimensions attribute"""
+    obj = obj.copy().cf.guess_coord_axis()
+    dimensions = []
+    try:
+        lon, lat = _get_lon_lat(obj)
+        dimensions.extend(["longitude", "latitude"])
+    except KeyError:
+        logger.warning(
+            f"Could not guess longitude and latitude coordinates from {list(obj.coords)}"
+        )
+    if "Z" in obj.cf.coords:
+        dimensions.append(obj.cf.coords["Z"].name)
+    if "time" in obj.cf.coords:
+        dimensions.append("time")
+    return dimensions
+
+
 def _add_var_attrs(ds, mip_table):
     """add variable attributes"""
 
@@ -80,10 +148,6 @@ def _add_var_attrs(ds, mip_table):
             del ds[var].attrs["modeling_realm"]
 
     return ds
-
-
-def _interpret_var_attr(attr, value):
-    pass
 
 
 def _interpret_var_attrs(ds, mip_table):
@@ -103,29 +167,38 @@ def _interpret_var_attrs(ds, mip_table):
                 da = getattr(rules, attr)(da)
         ds = ds.assign({da.name: da})  # .drop_vars(v)
 
-        # attrs = ds[v].attrs
-        # if ds[v].dtype != dtype_map[attrs["type"]]:
-        #     logger.warning(
-        #         f"converting {v} from {ds[v].dtype} to {dtype_map[attrs['type']]}"
-        #     )
-        #     ds[v] = ds[v].astype(dtype_map[attrs["type"]])
-        # del ds[v].attrs["type"]
+    return ds
 
-        # ds.rename({v: attrs.get("out_name") or v})
-        # del ds[v].attrs["out_name"]
 
-        # valid_min, valid_max = attrs.get("valid_min"), attrs.get("valid_max")
-        # if valid_min:
-        #     assert ds[v].min() >= valid_min
-        #     del ds[v].attrs["valid_min"]
-        # if valid_max:
-        #     assert ds[v].max() <= valid_max
-        #     del ds[v].attrs["valid_max"]
+def _interpret_coord_attrs(ds, time_units=None):
+    """Apply coordinates attributes.
+
+    This will interpret attributes found in the mip table, e.g.,
+    valid_min, valid_max, convert dtypes, etc...
+    Once attributes were interpreted they are removed from the
+    variables attributes dictionary.
+
+    """
+
+    for v in ds.coords:
+        da = ds.coords[v]
+        # print(v, da)
+        # logger.info(v)
+        for attr in da.attrs.copy():
+            # logger.info(attr)
+            if hasattr(rules, attr):
+                da = getattr(rules, attr)(da)
+        ds = ds.assign_coords({da.name: da})  # .drop_vars(v)
+
+    if "time" in ds.cf.coords:
+        ds = ds.cf.assign_coords(time=_encode_time(ds, time_units))
 
     return ds
 
 
 def _find_coord_key(da, axis_entry):
+    """find datarray coordinate by cf attributes from coordinates table"""
+
     keys = ["out_name", "standard_name", "axis"]
     for k in keys:
         if axis_entry[k] in da.cf.coords or axis_entry[k] in da.coords:
@@ -157,21 +230,9 @@ def _add_coord_attrs(da, axis_entry):
 
     dims = da.coords[out_name].dims
 
-    # this is a coordinate variable, swap dims
+    # this is a coordinate variable (not auxilliary), swap dims
     if len(dims) == 1:
         da = da.swap_dims({dims[0]: out_name})
-
-    # ensure dtype
-    dtype = axis_entry.get("type")
-    if dtype:
-        da[out_name] = da[out_name].astype(dtype_map.get(dtype) or dtype)
-
-    requested = axis_entry.get("requested")
-    if requested:
-        requested = list(map(float, requested))
-        # print(f"requested: {requested}")
-        # print(f"values: {da[out_name].values}")
-        assert np.allclose(da[out_name].values, requested)
 
     return da
 
@@ -191,7 +252,10 @@ def _apply_dims(da, dims):
 
     # d is a cmor coordinate table key, v is the coordinates table entry
     for d, v in dims.items():
-        da = _add_coord_attrs(da, v)
+        if v:
+            da = _add_coord_attrs(da, v)
+        else:
+            logger.warning(f"found no coordinate attributes for coordinate '{d}'")
         # we find the coordinate already by its correct cf out_name
         # if v["out_name"] in da.coords:
         #     da = _add_coord_attrs(da, d, v)
@@ -218,7 +282,7 @@ def _apply_dims(da, dims):
     return da
 
 
-def _interpret_var_dims(ds, coords_table, remove_dims_attr=True, drop=True):
+def _interpret_var_dims(ds, coords_table, drop=True):
     """Interpret variable dimensions attribute.
 
     This will look up the dimensions defined for variables
@@ -230,7 +294,14 @@ def _interpret_var_dims(ds, coords_table, remove_dims_attr=True, drop=True):
 
     for var in ds.data_vars:
         dims = ds[var].attrs.get("dimensions")
-        dims = {d: coords_table[d] for d in dims.split()}
+        if not dims:
+            dims = _guess_dims_attr(ds[var])
+            logger.debug(f"dims of {var}: {dims}")
+        else:
+            del ds[var].attrs["dimensions"]
+            dims = dims.split()
+
+        dims = {d: coords_table.get(d) or {"out_name": d} for d in dims}
 
         ds = _apply_dims(ds, dims)
         # add coordinates attribute, e.g., for 0D coordinate variables
@@ -245,9 +316,6 @@ def _interpret_var_dims(ds, coords_table, remove_dims_attr=True, drop=True):
 
         if coordinates:
             ds[var].attrs["coordinates"] = coordinates
-
-        if remove_dims_attr is True:
-            del ds[var].attrs["dimensions"]
 
         all_dims.extend([v["out_name"] for v in dims.values()])
 
@@ -270,7 +338,13 @@ def _add_version_attr(ds):
 
 
 def _update_global_attrs(ds, dataset_table):
-    ds.attrs.update({k: v for k, v in dataset_table.items() if not k.startswith("#")})
+    ds.attrs.update(
+        {
+            k: v
+            for k, v in dataset_table.items()
+            if (not k.startswith("#") and not k.startswith("_"))
+        }
+    )
 
     return ds
 
@@ -381,6 +455,7 @@ def cmorize(
     grids_table=None,
     mapping_table=None,
     guess=True,
+    time_units=None,
 ):
     """Lazy cmorization.
 
@@ -410,6 +485,9 @@ def cmorize(
         in json format.
     mapping_table: dict
         The mapping table maps input variable names to mip table variable keys.
+    time_units: str
+        Time units for NetCDF encoding. Default is ``days since`` the beginning of the
+        time interval.
 
     Returns
     -------
@@ -423,6 +501,14 @@ def cmorize(
     # ensure dataset
     if isinstance(ds, DataArray):
         ds = ds.to_dataset()
+
+    if mip_table is None:
+        logger.debug("using default cf variable table")
+        mip_table = cf_table().to_dict(orient="index")
+
+    if coords_table is None:
+        logger.debug("using default coords table")
+        coords_table = coords_default
 
     if guess is True:
         ds = ds.cf.guess_coord_axis(verbose=False)
@@ -441,6 +527,7 @@ def cmorize(
 
     if coords_table:
         ds = _interpret_var_dims(ds, coords_table.get("axis_entry") or coords_table)
+        ds = _interpret_coord_attrs(ds, time_units)
 
     if dataset_table:
         ds = _update_global_attrs(ds, dataset_table)
@@ -502,7 +589,9 @@ class Cmorizer:
         """List required global attributes."""
         return self.tables.cv["CV"].get("required_global_attributes")
 
-    def cmorize(self, ds, mip_table, dataset_table, mapping_table=None):
+    def cmorize(
+        self, ds, mip_table, dataset_table, mapping_table=None, time_units=None
+    ):
         """Lazy cmorization.
 
         Cmorizes an xarray Dataset or DataArray object. The cmorizations tries
@@ -522,6 +611,9 @@ class Cmorizer:
             in json format.
         mapping_table: dict
             The mapping table maps input variable names to mip table variable keys.
+        time_units: str
+            Time units for NetCDF encoding. Default is ``days since`` the beginning of the
+            time interval.
 
         Returns
         -------
@@ -552,4 +644,5 @@ class Cmorizer:
             coords_table=self.tables.coords,
             cv_table=self.tables.cv,
             mapping_table=mapping_table,
+            time_units=time_units,
         )
