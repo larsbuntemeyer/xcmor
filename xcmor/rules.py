@@ -9,21 +9,21 @@ class rules:
     drop = True
 
     @classmethod
-    def type(cls, obj, time=False):
+    def type(cls, obj):
         """apply dtype rule to dataarray"""
-        if time is False:
-            axis = obj.attrs.get("axis")
-            # don't convert time variables.
-            if axis and axis == "T":
-                return obj
+        axis = obj.attrs.get("axis")
         dtype = obj.attrs["type"]
+        # don't convert time variables, just add encoding
+        if axis and axis == "T":
+            obj.encoding["dtype"] = dtype_map[dtype]
+            del obj.attrs["type"]
+            return obj
         if obj.dtype != dtype_map[dtype]:
             logger.warning(
                 f"converting {obj.name or 'data'} from {obj.dtype} to {dtype_map[dtype]}"
             )
             obj = obj.astype(dtype_map[dtype])
-        if cls.drop is True:
-            del obj.attrs["type"]
+
         return obj
 
     @classmethod
