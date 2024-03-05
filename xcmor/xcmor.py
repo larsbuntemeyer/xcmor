@@ -7,6 +7,7 @@ import xarray as xr
 from xarray import DataArray
 
 from .log import get_logger
+from .mapping import dtype_map
 from .resources import get_project_tables
 from .rules import rules
 from .tests.tables import coords as coords_default
@@ -23,30 +24,30 @@ def _encode_time(ds, cf_units=None):
     if cf_units is None:
         cf_units = "days since ?"
     else:
-        del ds.time.attrs["units"]
+        del time.attrs["units"]
 
     start_format = "%Y-%m-%dT%H:%M:%S"
 
     # check if time is datetime-like, maybe there is a better way?
     # decode times if not datetime-like
     try:
-        time.dt
-    except Exception:
+        start_str = f"{time[0].dt.strftime(start_format).item()}"
+        units = cf_units.replace("?", start_str)
+        logger.debug(f"setting time units: {units}")
+        time.encoding["units"] = units
+    except AttributeError:
         cf_units = cf_units.replace("?", "1950")
         logger.warning(
             f"time axis does not seem to be datetime-like, encoding with units '{cf_units}'"
         )
-
         ds.time.attrs["units"] = cf_units  # .replace("?", "1950")
         ds = xr.decode_cf(ds, decode_times=True, decode_coords=False)
-        return ds.time
+        time = ds.time
 
-    start_str = f"{time[0].dt.strftime(start_format).item()}"
-    units = cf_units.replace("?", start_str)
+    if time.attrs.get("type"):
+        time.encoding["dtype"] = dtype_map[time.attrs["type"]]
 
-    logger.debug(f"setting time units: {units}")
-    time.encoding["units"] = units
-    return ds.cf["time"]
+    return time
 
 
 def _units_convert(da, cf_units, format=None):
@@ -165,7 +166,7 @@ def _interpret_var_attrs(ds, mip_table):
         for attr in da.attrs.copy():
             if hasattr(rules, attr):
                 da = getattr(rules, attr)(da)
-        ds = ds.assign({da.name: da})  # .drop_vars(v)
+        ds = ds.assign({da.name: da})
 
     return ds
 
@@ -182,13 +183,10 @@ def _interpret_coord_attrs(ds, time_units=None):
 
     for v in ds.coords:
         da = ds.coords[v]
-        # print(v, da)
-        # logger.info(v)
         for attr in da.attrs.copy():
-            # logger.info(attr)
             if hasattr(rules, attr):
                 da = getattr(rules, attr)(da)
-        ds = ds.assign_coords({da.name: da})  # .drop_vars(v)
+        ds = ds.assign_coords({da.name: da})
 
     if "time" in ds.cf.coords:
         ds = ds.cf.assign_coords(time=_encode_time(ds, time_units))
