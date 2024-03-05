@@ -106,27 +106,37 @@ def test_add_variable_attrs():
     assert result.frequency == mip_table["ta"]["frequency"]
 
 
-def test_cmorize_minimal():
+def test_cmorize_auto():
     ds = reg_ds.copy()
-    mip_table = mip_amon
     ds_out = cmorize(
-        ds.rename({"temperature": "ta", "precipitation": "pr"}),
-        mip_table=mip_table,
+        ds.rename({"temperature": "tas", "precipitation": "pr"}),
     )
 
     return ds_out
 
+
+def test_cmorize_minimal():
+    ds = reg_ds.copy()
+    mip_table = mip_amon
+    mapping_table = {"temperature": "tas", "precipitation": "pr"}
+    ds_out = cmorize(
+        ds.rename(mapping_table),
+        mip_table=mip_table,
+    )
+
     expected_global_attrs = ["frequency"]
 
-    for var in ds_out.data_vars:
-        da = ds_out[var]
+    for var in ds.data_vars:
+        cf_name = mapping_table.get(var)
+        assert cf_name in ds_out
+        cf_var = ds_out[cf_name]
         # ensure cmorizer does not change values
-        np.testing.assert_allclose(da, ds[var])
+        np.testing.assert_allclose(cf_var, ds[var])
         # test for expected attributes
         for k in expected_var_attrs:
-            assert da.attrs[k] == mip_table[var][k]
+            assert cf_var.attrs[k] == mip_table[cf_name][k]
         for k in expected_global_attrs:
-            assert ds_out.attrs[k] == mip_table[var][k]
+            assert ds_out.attrs[k] == mip_table[cf_name][k]
 
 
 def test_cmorize():
