@@ -123,6 +123,8 @@ exclude = "doc|flycheck"
 files = "xcmor/"
 show_error_codes = true
 warn_unused_ignores = true
+warn_unreachable = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
 
 [[tool.mypy.overrides]]
 module=[
@@ -134,6 +136,7 @@ module=[
     "pytest",
     "shapely.geometry",
     "xarray.core.pycompat",
+    "pint-xarray",
 ]
 ignore_missing_imports = true
 
