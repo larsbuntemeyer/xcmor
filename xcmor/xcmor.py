@@ -35,7 +35,7 @@ def _encode_time(ds, cf_units=None):
         units = cf_units.replace("?", start_str)
         logger.debug(f"setting time units: {units}")
         time.encoding["units"] = units
-    except AttributeError:
+    except (AttributeError, TypeError):
         cf_units = cf_units.replace("?", "1950")
         logger.warning(
             f"time axis does not seem to be datetime-like, encoding with units '{cf_units}'"
