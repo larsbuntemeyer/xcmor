@@ -136,7 +136,7 @@ module=[
     "pytest",
     "shapely.geometry",
     "xarray.core.pycompat",
-    "pint-xarray",
+    "pint_xarray",
 ]
 ignore_missing_imports = true
 
