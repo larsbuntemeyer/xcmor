@@ -1,3 +1,5 @@
+import collections
+import functools
 import json
 import re
 import tempfile
@@ -100,3 +102,49 @@ def _strip_time_cell_method(cfvarinfo):
         return cfvarinfo["cell_methods"].split("time:")[1].strip()
     except Exception:
         return None
+
+
+def _is_mapping(mapping):
+    return isinstance(mapping, collections.abc.Mapping)
+
+
+def _read_yaml(filename):
+    with open(filename) as f:
+        data = yaml.safe_load(f)
+    return data
+
+
+def _read_json(filename):
+    with open(filename) as f:
+        data = json.load(f)
+    return data
+
+
+def read_table(table):
+    if _is_mapping(table):
+        return table
+    try:
+        return _read_json(table)
+    except Exception:
+        pass
+    try:
+        return _read_yaml(table)
+    except Exception:
+        raise Exception(f"Could not read table {table}")
+    return
+
+
+def read_tables(tables):
+    def read_tables_decorator(func):
+        @functools.wraps(func)
+        def wrapper_read_tables(*args, **kwargs):
+            for k, v in kwargs.items():
+                print(k, v)
+                if k in tables:
+                    # if v and k.endswith("_table"):
+                    kwargs[k] = read_table(v)
+            return func(*args, **kwargs)
+
+        return wrapper_read_tables
+
+    return read_tables_decorator
