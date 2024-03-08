@@ -493,27 +493,23 @@ def cmorize(
     Cmorizes an xarray Dataset or DataArray object. The cmorizations tries
     to follow the approach of the original `cmor <https://github.com/PCMDI/cmor>`_
     library in adding, manipulating and interpreting dataseta attributes and
-    cmor table vocabulary.
+    cmor table vocabulary. All input table arguments (``*_table``) can either
+    be a dictionary or a path to a cmor table in json or yaml format.
 
     Parameters
     ----------
     ds : DataArray, Dataset
         Dataset that should be cmorized.
     mip_table : dict, str
-        The MIP table, can either be a dictionary or a path to a cmor table
-        in json format.
+        MIP table
     coords_table : dict, str
-        The cmor coordinates table, can either be a dictionary or a path to a cmor table
-        in json format.
+        The cmor coordinates table.
     dataset_table : dict, str
-        The input dataset cmor table, can either be a dictionary or a path to a cmor table
-        in json format.
+        The input dataset cmor table.
     cv_table: dict, str
-        The controlled vocabulary table, can either be a dictionary or a path to a cmor table
-        in json format.
+        The controlled vocabulary table.
     grids_table: dict, str
-        The grids table, can either be a dictionary or a path to a cmor table
-        in json format.
+        The grids table.
     mapping_table: dict
         The mapping table maps input variable names to mip table variable keys.
     time_units: str
