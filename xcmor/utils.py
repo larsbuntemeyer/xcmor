@@ -130,18 +130,20 @@ def read_table(table):
     try:
         return _read_yaml(table)
     except Exception:
-        raise Exception(f"Could not read table {table}")
+        raise Exception(
+            f"Could not read table {table}, should be either json or yaml format."
+        )
     return
 
 
 def read_tables(tables):
+    """decorator that reads tables in kwargs"""
+
     def read_tables_decorator(func):
         @functools.wraps(func)
         def wrapper_read_tables(*args, **kwargs):
             for k, v in kwargs.items():
-                print(k, v)
-                if k in tables:
-                    # if v and k.endswith("_table"):
+                if k in tables and v:
                     kwargs[k] = read_table(v)
             return func(*args, **kwargs)
 
