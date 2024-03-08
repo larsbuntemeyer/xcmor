@@ -1,7 +1,13 @@
 import pytest
 
 from ..resources import ProjectTables, cmip6, cordex, retrieve_cmor_table
-from ..utils import filter_table_by_value, parse_cell_methods, table_to_dataframe
+from ..utils import (
+    _tmp_table,
+    filter_table_by_value,
+    parse_cell_methods,
+    read_tables,
+    table_to_dataframe,
+)
 from . import requires_pooch
 from .tables import mip_amon
 
@@ -40,6 +46,21 @@ def test_table_to_dataframe():
     assert df.variable_key.to_list() == list(mip_amon.keys())
     assert df.standard_name.to_list() == [v["standard_name"] for v in mip_amon.values()]
     assert df.units.to_list() == [v["units"] for v in mip_amon.values()]
+
+
+def test_read_tables_decorator():
+    table = {"x": 1, "y": 2}
+    table_fname = _tmp_table(table)
+
+    @read_tables(tables=["mip_table", "coords_table"])
+    def cmorize(mip_table=None, coords_table=None):
+        """Cmorizer function"""
+        return mip_table, coords_table
+
+    assert cmorize(mip_table=table, coords_table=table_fname) == (
+        {"x": 1, "y": 2},
+        {"x": 1, "y": 2},
+    )
 
 
 @requires_pooch

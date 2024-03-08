@@ -11,7 +11,7 @@ from .mapping import dtype_map
 from .resources import get_project_tables
 from .rules import rules
 from .tests.tables import coords as coords_default
-from .utils import cf_table
+from .utils import cf_table, read_tables
 
 logger = get_logger(__name__)
 
@@ -474,6 +474,9 @@ def _add_header_attrs(ds, header, cv_table=None):
     return ds
 
 
+@read_tables(
+    tables=["mip_table", "coords_table", "dataset_table", "cv_table", "mapping_table"]
+)
 def cmorize(
     ds,
     mip_table=None,
@@ -490,27 +493,23 @@ def cmorize(
     Cmorizes an xarray Dataset or DataArray object. The cmorizations tries
     to follow the approach of the original `cmor <https://github.com/PCMDI/cmor>`_
     library in adding, manipulating and interpreting dataseta attributes and
-    cmor table vocabulary.
+    cmor table vocabulary. All input table arguments (``*_table``) can either
+    be a dictionary or a path to a cmor table in json or yaml format.
 
     Parameters
     ----------
     ds : DataArray, Dataset
         Dataset that should be cmorized.
     mip_table : dict, str
-        The MIP table, can either be a dictionary or a path to a cmor table
-        in json format.
+        MIP table
     coords_table : dict, str
-        The cmor coordinates table, can either be a dictionary or a path to a cmor table
-        in json format.
+        The cmor coordinates table.
     dataset_table : dict, str
-        The input dataset cmor table, can either be a dictionary or a path to a cmor table
-        in json format.
+        The input dataset cmor table.
     cv_table: dict, str
-        The controlled vocabulary table, can either be a dictionary or a path to a cmor table
-        in json format.
+        The controlled vocabulary table.
     grids_table: dict, str
-        The grids table, can either be a dictionary or a path to a cmor table
-        in json format.
+        The grids table.
     mapping_table: dict
         The mapping table maps input variable names to mip table variable keys.
     time_units: str
