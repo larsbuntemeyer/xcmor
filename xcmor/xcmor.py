@@ -11,7 +11,7 @@ from .mapping import dtype_map
 from .resources import get_project_tables
 from .rules import rules
 from .tests.tables import coords as coords_default
-from .utils import cf_table
+from .utils import cf_table, read_tables
 
 logger = get_logger(__name__)
 
@@ -474,6 +474,9 @@ def _add_header_attrs(ds, header, cv_table=None):
     return ds
 
 
+@read_tables(
+    tables=["mip_table", "coords_table", "dataset_table", "cv_table", "mapping_table"]
+)
 def cmorize(
     ds,
     mip_table=None,
