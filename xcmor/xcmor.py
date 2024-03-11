@@ -11,9 +11,14 @@ from .mapping import dtype_map
 from .resources import get_project_tables
 from .rules import rules
 from .tests.tables import coords as coords_default
+from .tests.tables import grids as grids_default
 from .utils import cf_table, read_tables
 
 logger = get_logger(__name__)
+
+
+def _update_attrs(obj):
+    pass
 
 
 def _transpose(ds):
@@ -78,9 +83,19 @@ def _units_convert(da, format=None):
     return da
 
 
+def _remove_bounds_attrs(obj):
+    """Remove bounds variable attributes because they shouldn't have any"""
+    for k in obj.cf.bounds:
+        obj.cf.get_bounds(k).attrs = {}
+        obj.cf.get_bounds(k).encoding = {}
+    return obj
+
+
 def _get_x_y_coords(obj):
     """Guess linear X and Y coordinates"""
     obj = obj.cf.guess_coord_axis()
+    obj = _remove_bounds_attrs(obj)
+
     X = None
     Y = None
     # cfxr finds the X and Y coordinates right away
@@ -135,6 +150,7 @@ def _guess_dims_attr(obj):
     dimensions = []
     try:
         lon, lat = _get_lon_lat(obj)
+        logger.debug(f"guessing lon, lat: {lon.name}, {lat.name}")
         dimensions.extend(["longitude", "latitude"])
     except KeyError:
         logger.warning(
@@ -281,6 +297,7 @@ def _apply_dims(da, dims):
     # d is a cmor coordinate table key, v is the coordinates table entry
     for d, v in dims.items():
         if v:
+            logger.debug(f"{d}, {v}")
             da = _add_coord_attrs(da, v)
         else:
             logger.warning(f"found no coordinate attributes for coordinate '{d}'")
@@ -310,7 +327,7 @@ def _apply_dims(da, dims):
     return da
 
 
-def _interpret_var_dims(ds, coords_table, drop=True):
+def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
     """Interpret variable dimensions attribute.
 
     This will look up the dimensions defined for variables
@@ -320,6 +337,13 @@ def _interpret_var_dims(ds, coords_table, drop=True):
     """
     all_dims = []
 
+    if grids_table:
+        coords_table = (
+            coords_table
+            | grids_table.get("variable_entry")
+            | grids_table.get("axis_entry")
+        )
+
     for var in ds.data_vars:
         dims = ds[var].attrs.get("dimensions")
         if not dims:
@@ -328,6 +352,8 @@ def _interpret_var_dims(ds, coords_table, drop=True):
         else:
             del ds[var].attrs["dimensions"]
             dims = dims.split()
+
+        logger.debug(f"{var}: {dims}")
 
         dims = {d: coords_table.get(d) or {"out_name": d} for d in dims}
 
@@ -521,9 +547,10 @@ def cmorize(
     Cmorized Dataset.
 
     """
-    guess = True
+    # guess = True
 
     ds = ds.copy()
+    ds = _remove_bounds_attrs(ds)
 
     # ensure dataset
     if isinstance(ds, DataArray):
@@ -537,8 +564,13 @@ def cmorize(
         logger.debug("using default coords table")
         coords_table = coords_default
 
+    if ds.cf.grid_mapping_names or _is_curvilinear(ds):
+        logger.debug(f"grid mappings: {ds.cf.grid_mapping_names}")
+        logger.debug(f"requires grid mapping: {_is_curvilinear(ds)}")
+        grids_table = grids_table or grids_default
+
     if guess is True:
-        ds = ds.cf.guess_coord_axis(verbose=False)
+        ds = ds.cf.guess_coord_axis(verbose=True)
 
     # ensure grid mappings and bounds in coords, not in data_vars
     ds = xr.decode_cf(ds, decode_coords="all")
@@ -553,7 +585,9 @@ def cmorize(
     ds = _interpret_var_attrs(ds, mip_table.get("variable_entry") or mip_table)
 
     if coords_table:
-        ds = _interpret_var_dims(ds, coords_table.get("axis_entry") or coords_table)
+        ds = _interpret_var_dims(
+            ds, coords_table.get("axis_entry") or coords_table, grids_table
+        )
         ds = _interpret_coord_attrs(ds, time_units)
 
     if dataset_table:
@@ -570,7 +604,7 @@ def cmorize(
 
     # sort attributes
     ds.attrs = collections.OrderedDict(sorted(ds.attrs.items()))
-
+    return ds
     # transpose to COARDS
     ds = _transpose(ds)
 
