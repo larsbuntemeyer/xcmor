@@ -12,7 +12,7 @@ from .resources import get_project_tables
 from .rules import rules
 from .tests.tables import coords as coords_default
 from .tests.tables import grids as grids_default
-from .utils import cf_table, read_tables
+from .utils import cf_table, key_by_attr, read_tables
 
 logger = get_logger(__name__)
 
@@ -93,7 +93,7 @@ def _remove_bounds_attrs(obj):
 
 def _get_x_y_coords(obj):
     """Guess linear X and Y coordinates"""
-    obj = obj.cf.guess_coord_axis()
+    # obj = obj.cf.guess_coord_axis()
     obj = _remove_bounds_attrs(obj)
 
     X = None
@@ -116,14 +116,14 @@ def _get_x_y_coords(obj):
     return X, Y
 
 
-def _get_lon_lat(obj):
+def _get_lon_lat_coords(obj):
     """Return lon and lat extracted from ds
 
     Use cf_xarray to identify longitude and latitude coordinates.
     Might be 1D or 2D coordinates.
 
     """
-    obj = obj.copy().cf.guess_coord_axis()
+    # obj = obj.copy().cf.guess_coord_axis()
     try:
         lon = obj.cf["longitude"]
         lat = obj.cf["latitude"]
@@ -140,7 +140,7 @@ def _is_curvilinear(obj):
     means if longitude and latitude are not 1D coordinates.
 
     """
-    lon, lat = _get_lon_lat(obj)
+    lon, lat = _get_lon_lat_coords(obj)
     return lon.ndim > 1 and lat.ndim > 1
 
 
@@ -149,8 +149,8 @@ def _guess_dims_attr(obj):
     obj = obj.copy().cf.guess_coord_axis()
     dimensions = []
     try:
-        lon, lat = _get_lon_lat(obj)
-        logger.debug(f"guessing lon, lat: {lon.name}, {lat.name}")
+        lon, lat = _get_lon_lat_coords(obj)
+        logger.debug(f"guessing longitude, latitude: {lon.name}, {lat.name}")
         dimensions.extend(["longitude", "latitude"])
     except KeyError:
         logger.warning(
@@ -293,7 +293,6 @@ def _apply_dims(da, dims):
         table entries as values.
 
     """
-
     # d is a cmor coordinate table key, v is the coordinates table entry
     for d, v in dims.items():
         if v:
@@ -327,6 +326,30 @@ def _apply_dims(da, dims):
     return da
 
 
+def _find_table_entry(table, value):
+    entry = table.get(value)
+    if entry is None:
+        # could not find by key, search by attributes
+        attrs = ["axis", "out_name", "standard_name"]
+        for attr in attrs:
+            keys = key_by_attr(table, attr, value)
+            if keys and len(keys) == 1:
+                logger.debug(
+                    f"found value '{value}' as attribute '{attr}' in key '{keys}'"
+                )
+                entry = table[keys[0]]
+                break
+            elif keys:
+                logger.debug(
+                    f"found several values '{value}' as attribute '{attr}' in keys '{keys}'"
+                )
+
+    if entry is None:
+        logger.error(f"Could not find any unique entry with attribute value '{value}'")
+
+    return entry
+
+
 def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
     """Interpret variable dimensions attribute.
 
@@ -336,6 +359,46 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
 
     """
     all_dims = []
+    auxiliary = False
+    curvilinear = _is_curvilinear(ds)
+    has_grid_mapping = ds.cf.grid_mapping_names != {}
+
+    logger.debug(f"curvilinear: {curvilinear}")
+    logger.debug(f"has_grid_mapping: {has_grid_mapping}")
+
+    x, y = _get_x_y_coords(ds)
+    lon, lat = _get_lon_lat_coords(ds)
+
+    logger.debug(f"x-axis, y-axis: {x.name}, {y.name}")
+    logger.debug(f"longitude, latitude: {lon.name}, {lat.name}")
+
+    if not (lon.equals(x) and lat.equals(y)):
+        auxiliary = True
+
+    logger.debug(f"auxiliary coordinates: {auxiliary}")
+
+    if auxiliary is True:
+        # coords = (
+        #     coords_table
+        #     | grids_table.get("variable_entry")
+        #     | grids_table.get("axis_entry")
+        # )
+        # lon_entry = _find_table_entry(grids_table.get("variable_entry"), "longitude")
+        # lat_entry = _find_table_entry(grids_table.get("variable_entry"), "latitude")
+        x_entry = _find_table_entry(grids_table["axis_entry"], x.name)
+        y_entry = _find_table_entry(grids_table["axis_entry"], y.name)
+        ds[x.name].attrs = x_entry
+        ds[y.name].attrs = y_entry
+    else:
+        # lon_entry = _find_table_entry(coords_table, lon.name)
+        # lat_entry = _find_table_entry(coords_table, lat.name)
+        x_entry = None
+        y_entry = None
+
+    if auxiliary is True and not has_grid_mapping:
+        logger.warning(
+            "no grid mapping found although the dataset seems to have auxilliary coordinates"
+        )
 
     if grids_table:
         coords_table = (
@@ -358,6 +421,7 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
         dims = {d: coords_table.get(d) or {"out_name": d} for d in dims}
 
         ds = _apply_dims(ds, dims)
+
         # add coordinates attribute, e.g., for 0D coordinate variables
         # e.g., height2m, if not a dataarray index.
         coordinates = " ".join(
@@ -372,6 +436,10 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
             ds[var].attrs["coordinates"] = coordinates
 
         all_dims.extend([v["out_name"] for v in dims.values()])
+
+        if curvilinear:
+            x, y = _get_x_y_coords(ds)
+            logger.debug(f"X/Y: {x.name}/{y.name}")
 
     logger.debug(f"added coordinates: {list(all_dims)}")
     # drop unneccessary coordinates

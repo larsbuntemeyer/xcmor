@@ -11,6 +11,15 @@ import xarray as xr
 import yaml
 
 
+def key_by_attr(table, attr, value):
+    """searches a table key by value"""
+    keys = []
+    for k, v in table.items():
+        if v.get(attr) == value:
+            keys.append(k)
+    return keys
+
+
 def cf_table():
     filename = op.join(op.dirname(__file__), "tables", "cf-variables.csv")
     return pd.read_csv(filename, index_col="out_name")
