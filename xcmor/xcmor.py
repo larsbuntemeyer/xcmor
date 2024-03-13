@@ -93,7 +93,7 @@ def _remove_bounds_attrs(obj):
 
 def _get_x_y_coords(obj):
     """Guess linear X and Y coordinates"""
-    # obj = obj.cf.guess_coord_axis()
+    obj = obj.cf.guess_coord_axis()
     obj = _remove_bounds_attrs(obj)
 
     X = None
@@ -123,7 +123,7 @@ def _get_lon_lat_coords(obj):
     Might be 1D or 2D coordinates.
 
     """
-    # obj = obj.copy().cf.guess_coord_axis()
+    obj = obj.copy().cf.guess_coord_axis()
     try:
         lon = obj.cf["longitude"]
         lat = obj.cf["latitude"]
