@@ -618,11 +618,15 @@ def cmorize(
     # guess = True
 
     ds = ds.copy()
-    ds = _remove_bounds_attrs(ds)
 
     # ensure dataset
     if isinstance(ds, DataArray):
         ds = ds.to_dataset()
+
+    # ensure grid mappings and bounds in coords, not in data_vars
+    ds = xr.decode_cf(ds, decode_coords="all")
+
+    ds = _remove_bounds_attrs(ds)
 
     if mip_table is None:
         logger.debug("using default cf variable table")
@@ -639,9 +643,6 @@ def cmorize(
 
     if guess is True:
         ds = ds.cf.guess_coord_axis(verbose=True)
-
-    # ensure grid mappings and bounds in coords, not in data_vars
-    ds = xr.decode_cf(ds, decode_coords="all")
 
     if mapping_table is not None:
         ds = ds.rename_vars({v: (mapping_table.get(v) or v) for v in ds})

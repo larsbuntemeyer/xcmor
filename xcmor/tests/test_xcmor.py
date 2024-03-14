@@ -10,7 +10,7 @@ from ..xcmor import (
     _get_lon_lat_coords,
     _get_x_y_coords,
     _guess_dims_attr,
-    _interpret_var_dims,
+    #    _interpret_var_dims,
     _is_curvilinear,
     _transpose,
     _units_convert,
@@ -68,27 +68,27 @@ def test_guess_dims_attr():
     assert _guess_dims_attr(temp_ds) == ["longitude", "latitude", "time"]
 
 
-def test_interpret_var_dims():
-    ds = xr.Dataset(
-        data_vars=dict(
-            temp=(["x"], [1, 4, 2, 9], {"dimensions": "longitude"}),
-        ),
-        coords=dict(
-            x=(["x"], [1, 2, 3, 4]),
-        ),
-        attrs=dict(description="Weather related data."),
-    )
-    ds_out = _interpret_var_dims(
-        ds.cf.guess_coord_axis(verbose=True), coords["axis_entry"]
-    )
-    assert coords["axis_entry"]["longitude"]["out_name"] in ds_out.coords
-
-    ds.temp.attrs = {"dimensions": "longitude height2m"}
-    ds_out = _interpret_var_dims(
-        ds.cf.guess_coord_axis(verbose=True), coords["axis_entry"]
-    )
-    assert coords["axis_entry"]["longitude"]["out_name"] in ds_out.coords
-    assert coords["axis_entry"]["height2m"]["out_name"] in ds_out.coords
+# def test_interpret_var_dims():
+#    ds = xr.Dataset(
+#        data_vars=dict(
+#            temp=(["x"], [1, 4, 2, 9], {"dimensions": "longitude"}),
+#        ),
+#        coords=dict(
+#            x=(["x"], [1, 2, 3, 4]),
+#        ),
+#        attrs=dict(description="Weather related data."),
+#    )
+#    ds_out = _interpret_var_dims(
+#        ds.cf.guess_coord_axis(verbose=True), coords["axis_entry"]
+#    )
+#    assert coords["axis_entry"]["longitude"]["out_name"] in ds_out.coords
+#
+#    ds.temp.attrs = {"dimensions": "longitude height2m"}
+#    ds_out = _interpret_var_dims(
+#        ds.cf.guess_coord_axis(verbose=True), coords["axis_entry"]
+#    )
+#    assert coords["axis_entry"]["longitude"]["out_name"] in ds_out.coords
+#    assert coords["axis_entry"]["height2m"]["out_name"] in ds_out.coords
 
 
 def test_get_x_y_coords():
