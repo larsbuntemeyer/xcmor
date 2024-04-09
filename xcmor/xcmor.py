@@ -72,9 +72,9 @@ def _units_convert(da, format=None):
         )
         da_quant = da.pint.quantify(da.original_units)
         da = da_quant.pint.to(da.units).pint.dequantify(format=format)
-        da.attrs[
-            "history"
-        ] = f"original data with units {da.original_units} converted to {da.units}"
+        da.attrs["history"] = (
+            f"original data with units {da.original_units} converted to {da.units}"
+        )
     return da
 
 
