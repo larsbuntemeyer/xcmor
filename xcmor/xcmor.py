@@ -11,9 +11,14 @@ from .mapping import dtype_map
 from .resources import get_project_tables
 from .rules import rules
 from .tests.tables import coords as coords_default
-from .utils import cf_table, read_tables
+from .tests.tables import grids as grids_default
+from .utils import cf_table, key_by_attr, read_tables
 
 logger = get_logger(__name__)
+
+
+def _update_attrs(obj):
+    pass
 
 
 def _transpose(ds):
@@ -72,15 +77,25 @@ def _units_convert(da, format=None):
         )
         da_quant = da.pint.quantify(da.original_units)
         da = da_quant.pint.to(da.units).pint.dequantify(format=format)
-        da.attrs[
-            "history"
-        ] = f"original data with units {da.original_units} converted to {da.units}"
+        da.attrs["history"] = (
+            f"original data with units {da.original_units} converted to {da.units}"
+        )
     return da
+
+
+def _remove_bounds_attrs(obj):
+    """Remove bounds variable attributes because they shouldn't have any"""
+    for k in obj.cf.bounds:
+        obj.cf.get_bounds(k).attrs = {}
+        obj.cf.get_bounds(k).encoding = {}
+    return obj
 
 
 def _get_x_y_coords(obj):
     """Guess linear X and Y coordinates"""
     obj = obj.cf.guess_coord_axis()
+    obj = _remove_bounds_attrs(obj)
+
     X = None
     Y = None
     # cfxr finds the X and Y coordinates right away
@@ -101,7 +116,7 @@ def _get_x_y_coords(obj):
     return X, Y
 
 
-def _get_lon_lat(obj):
+def _get_lon_lat_coords(obj):
     """Return lon and lat extracted from ds
 
     Use cf_xarray to identify longitude and latitude coordinates.
@@ -125,7 +140,7 @@ def _is_curvilinear(obj):
     means if longitude and latitude are not 1D coordinates.
 
     """
-    lon, lat = _get_lon_lat(obj)
+    lon, lat = _get_lon_lat_coords(obj)
     return lon.ndim > 1 and lat.ndim > 1
 
 
@@ -134,7 +149,8 @@ def _guess_dims_attr(obj):
     obj = obj.copy().cf.guess_coord_axis()
     dimensions = []
     try:
-        lon, lat = _get_lon_lat(obj)
+        lon, lat = _get_lon_lat_coords(obj)
+        logger.debug(f"guessing longitude, latitude: {lon.name}, {lat.name}")
         dimensions.extend(["longitude", "latitude"])
     except KeyError:
         logger.warning(
@@ -277,10 +293,10 @@ def _apply_dims(da, dims):
         table entries as values.
 
     """
-
     # d is a cmor coordinate table key, v is the coordinates table entry
     for d, v in dims.items():
         if v:
+            logger.debug(f"{d}, {v}")
             da = _add_coord_attrs(da, v)
         else:
             logger.warning(f"found no coordinate attributes for coordinate '{d}'")
@@ -310,7 +326,31 @@ def _apply_dims(da, dims):
     return da
 
 
-def _interpret_var_dims(ds, coords_table, drop=True):
+def _find_table_entry(table, value):
+    entry = table.get(value)
+    if entry is None:
+        # could not find by key, search by attributes
+        attrs = ["axis", "out_name", "standard_name"]
+        for attr in attrs:
+            keys = key_by_attr(table, attr, value)
+            if keys and len(keys) == 1:
+                logger.debug(
+                    f"found value '{value}' as attribute '{attr}' in key '{keys}'"
+                )
+                entry = table[keys[0]]
+                break
+            elif keys:
+                logger.debug(
+                    f"found several values '{value}' as attribute '{attr}' in keys '{keys}'"
+                )
+
+    if entry is None:
+        logger.error(f"Could not find any unique entry with attribute value '{value}'")
+
+    return entry
+
+
+def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
     """Interpret variable dimensions attribute.
 
     This will look up the dimensions defined for variables
@@ -319,6 +359,53 @@ def _interpret_var_dims(ds, coords_table, drop=True):
 
     """
     all_dims = []
+    auxiliary = False
+    curvilinear = _is_curvilinear(ds)
+    has_grid_mapping = ds.cf.grid_mapping_names != {}
+
+    logger.debug(f"curvilinear: {curvilinear}")
+    logger.debug(f"has_grid_mapping: {has_grid_mapping}")
+
+    x, y = _get_x_y_coords(ds)
+    lon, lat = _get_lon_lat_coords(ds)
+
+    logger.debug(f"x-axis, y-axis: {x.name}, {y.name}")
+    logger.debug(f"longitude, latitude: {lon.name}, {lat.name}")
+
+    if not (lon.equals(x) and lat.equals(y)):
+        auxiliary = True
+
+    logger.debug(f"auxiliary coordinates: {auxiliary}")
+
+    if auxiliary is True:
+        # coords = (
+        #     coords_table
+        #     | grids_table.get("variable_entry")
+        #     | grids_table.get("axis_entry")
+        # )
+        # lon_entry = _find_table_entry(grids_table.get("variable_entry"), "longitude")
+        # lat_entry = _find_table_entry(grids_table.get("variable_entry"), "latitude")
+        x_entry = _find_table_entry(grids_table["axis_entry"], x.name)
+        y_entry = _find_table_entry(grids_table["axis_entry"], y.name)
+        ds[x.name].attrs = x_entry
+        ds[y.name].attrs = y_entry
+    else:
+        # lon_entry = _find_table_entry(coords_table, lon.name)
+        # lat_entry = _find_table_entry(coords_table, lat.name)
+        x_entry = None
+        y_entry = None
+
+    if auxiliary is True and not has_grid_mapping:
+        logger.warning(
+            "no grid mapping found although the dataset seems to have auxilliary coordinates"
+        )
+
+    if grids_table:
+        coords_table = (
+            coords_table
+            | grids_table.get("variable_entry")
+            | grids_table.get("axis_entry")
+        )
 
     for var in ds.data_vars:
         dims = ds[var].attrs.get("dimensions")
@@ -329,9 +416,12 @@ def _interpret_var_dims(ds, coords_table, drop=True):
             del ds[var].attrs["dimensions"]
             dims = dims.split()
 
+        logger.debug(f"{var}: {dims}")
+
         dims = {d: coords_table.get(d) or {"out_name": d} for d in dims}
 
         ds = _apply_dims(ds, dims)
+
         # add coordinates attribute, e.g., for 0D coordinate variables
         # e.g., height2m, if not a dataarray index.
         coordinates = " ".join(
@@ -346,6 +436,10 @@ def _interpret_var_dims(ds, coords_table, drop=True):
             ds[var].attrs["coordinates"] = coordinates
 
         all_dims.extend([v["out_name"] for v in dims.values()])
+
+        if curvilinear:
+            x, y = _get_x_y_coords(ds)
+            logger.debug(f"X/Y: {x.name}/{y.name}")
 
     logger.debug(f"added coordinates: {list(all_dims)}")
     # drop unneccessary coordinates
@@ -521,13 +615,18 @@ def cmorize(
     Cmorized Dataset.
 
     """
-    guess = True
+    # guess = True
 
     ds = ds.copy()
 
     # ensure dataset
     if isinstance(ds, DataArray):
         ds = ds.to_dataset()
+
+    # ensure grid mappings and bounds in coords, not in data_vars
+    ds = xr.decode_cf(ds, decode_coords="all")
+
+    ds = _remove_bounds_attrs(ds)
 
     if mip_table is None:
         logger.debug("using default cf variable table")
@@ -537,11 +636,13 @@ def cmorize(
         logger.debug("using default coords table")
         coords_table = coords_default
 
-    if guess is True:
-        ds = ds.cf.guess_coord_axis(verbose=False)
+    if ds.cf.grid_mapping_names or _is_curvilinear(ds):
+        logger.debug(f"grid mappings: {ds.cf.grid_mapping_names}")
+        logger.debug(f"requires grid mapping: {_is_curvilinear(ds)}")
+        grids_table = grids_table or grids_default
 
-    # ensure grid mappings and bounds in coords, not in data_vars
-    ds = xr.decode_cf(ds, decode_coords="all")
+    if guess is True:
+        ds = ds.cf.guess_coord_axis(verbose=True)
 
     if mapping_table is not None:
         ds = ds.rename_vars({v: (mapping_table.get(v) or v) for v in ds})
@@ -553,7 +654,9 @@ def cmorize(
     ds = _interpret_var_attrs(ds, mip_table.get("variable_entry") or mip_table)
 
     if coords_table:
-        ds = _interpret_var_dims(ds, coords_table.get("axis_entry") or coords_table)
+        ds = _interpret_var_dims(
+            ds, coords_table.get("axis_entry") or coords_table, grids_table
+        )
         ds = _interpret_coord_attrs(ds, time_units)
 
     if dataset_table:
@@ -570,7 +673,7 @@ def cmorize(
 
     # sort attributes
     ds.attrs = collections.OrderedDict(sorted(ds.attrs.items()))
-
+    return ds
     # transpose to COARDS
     ds = _transpose(ds)
 
