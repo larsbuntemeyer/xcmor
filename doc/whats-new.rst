@@ -3,7 +3,7 @@
 What's New
 ----------
 
-v0.1.0 (UNRELEASED)
+v0.1.0 (Unreleased)
 ===================
 
 - Initial release.
