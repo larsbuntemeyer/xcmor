@@ -94,7 +94,7 @@ def _remove_bounds_attrs(obj):
 def _get_x_y_coords(obj):
     """Guess linear X and Y coordinates"""
     obj = obj.cf.guess_coord_axis()
-    obj = _remove_bounds_attrs(obj)
+    #obj = _remove_bounds_attrs(obj)
 
     X = None
     Y = None
@@ -173,7 +173,7 @@ def _add_var_attrs(ds, mip_table):
             if k in da.attrs and da.attrs[k] != v:
                 # warn if we overvwrite conflicting attributes
                 logger.warn(
-                    "{var}: conflicting value '{da.attrs[k]}' of attribute '{k}' with value '{v}' from mip table."
+                    f"{var}: overwriting conflicting value '{da.attrs[k]}' of attribute '{k}' with value '{v}' from mip table."
                 )
                 if k == "units":
                     # keep original units for later interpretation
@@ -355,7 +355,7 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
 
     This will look up the dimensions defined for variables
     in the mip table and update coordinates acoording to
-    meta data in the coordinates table.
+    meta data in the coordinates table and grids table.
 
     """
     all_dims = []
@@ -400,7 +400,7 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
             "no grid mapping found although the dataset seems to have auxilliary coordinates"
         )
 
-    if grids_table:
+    if grids_table and auxiliary is True:
         coords_table = (
             coords_table
             | grids_table.get("variable_entry")
@@ -626,6 +626,7 @@ def cmorize(
     # ensure grid mappings and bounds in coords, not in data_vars
     ds = xr.decode_cf(ds, decode_coords="all")
 
+    # bounds variables should not have any attributes
     ds = _remove_bounds_attrs(ds)
 
     if mip_table is None:
@@ -776,6 +777,7 @@ class Cmorizer:
             dataset_table=dataset_table,
             coords_table=self.tables.coords,
             cv_table=self.tables.cv,
+            grids_table=self.tables.grids,
             mapping_table=mapping_table,
             time_units=time_units,
         )

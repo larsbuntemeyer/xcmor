@@ -10,6 +10,11 @@ import pandas as pd
 import xarray as xr
 import yaml
 
+from .log import get_logger
+
+
+logger = get_logger(__name__)
+
 
 def key_by_attr(table, attr, value):
     """searches a table key by value"""
