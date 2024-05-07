@@ -94,7 +94,7 @@ def _remove_bounds_attrs(obj):
 def _get_x_y_coords(obj):
     """Guess linear X and Y coordinates"""
     obj = obj.cf.guess_coord_axis()
-    #obj = _remove_bounds_attrs(obj)
+    # obj = _remove_bounds_attrs(obj)
 
     X = None
     Y = None
