@@ -1,5 +1,5 @@
 import collections
-from datetime import date
+from datetime import datetime
 
 # from warnings import warn
 import cf_xarray as cfxr  # noqa
@@ -453,11 +453,18 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
 
 def _add_version_attr(ds):
     """add version attribute"""
-    now = date.today().strftime("%Y%m%d")
+    now = datetime.now().strftime("%Y%m%d")
     ds.attrs["version"] = now
 
     return ds
 
+
+def _add_creation_date(ds):
+    """add version attribute"""
+    now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    ds.attrs["creation_date"] = now
+
+    return ds
 
 def _update_global_attrs(ds, dataset_table):
     ds.attrs.update(
@@ -480,9 +487,9 @@ def _check_cv(ds, cv_table):
         cv_values = cv.get(attr)
         v = ds.attrs.get(attr)
         if not v:
-            logger.warn(f"{attr} not found")
+            logger.error(f"{attr} not found")
         elif cv_values and v not in list(cv_values):
-            logger.warn(f"value '{v[0:50]}...' for '{attr}' not in {list(cv_values)}")
+            logger.error(f"value '{v[0:50]}...' for '{attr}' not in {list(cv_values)}")
 
 
 def _add_derived_attrs(ds, cv_table):
@@ -664,6 +671,7 @@ def cmorize(
         ds = _update_global_attrs(ds, dataset_table)
 
     ds = _add_version_attr(ds)
+    ds = _add_creation_date(ds)
 
     if mip_table.get("Header"):
         ds = _add_header_attrs(ds, mip_table.get("Header"), cv_table)
