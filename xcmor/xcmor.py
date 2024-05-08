@@ -1,5 +1,5 @@
 import collections
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 # from warnings import warn
 import cf_xarray as cfxr  # noqa
@@ -461,7 +461,7 @@ def _add_version_attr(ds):
 
 def _add_creation_date(ds):
     """add version attribute"""
-    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S%Z")
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%Z")
     ds.attrs["creation_date"] = now
 
     return ds
