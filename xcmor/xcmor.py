@@ -1,5 +1,5 @@
 import collections
-from datetime import date
+from datetime import datetime, timezone
 
 # from warnings import warn
 import cf_xarray as cfxr  # noqa
@@ -94,7 +94,7 @@ def _remove_bounds_attrs(obj):
 def _get_x_y_coords(obj):
     """Guess linear X and Y coordinates"""
     obj = obj.cf.guess_coord_axis()
-    obj = _remove_bounds_attrs(obj)
+    # obj = _remove_bounds_attrs(obj)
 
     X = None
     Y = None
@@ -173,7 +173,7 @@ def _add_var_attrs(ds, mip_table):
             if k in da.attrs and da.attrs[k] != v:
                 # warn if we overvwrite conflicting attributes
                 logger.warn(
-                    "{var}: conflicting value '{da.attrs[k]}' of attribute '{k}' with value '{v}' from mip table."
+                    f"{var}: overwriting conflicting value '{da.attrs[k]}' of attribute '{k}' with value '{v}' from mip table."
                 )
                 if k == "units":
                     # keep original units for later interpretation
@@ -355,7 +355,7 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
 
     This will look up the dimensions defined for variables
     in the mip table and update coordinates acoording to
-    meta data in the coordinates table.
+    meta data in the coordinates table and grids table.
 
     """
     all_dims = []
@@ -400,7 +400,7 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
             "no grid mapping found although the dataset seems to have auxilliary coordinates"
         )
 
-    if grids_table:
+    if grids_table and auxiliary is True:
         coords_table = (
             coords_table
             | grids_table.get("variable_entry")
@@ -453,8 +453,16 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
 
 def _add_version_attr(ds):
     """add version attribute"""
-    now = date.today().strftime("%Y%m%d")
+    now = datetime.now().strftime("%Y%m%d")
     ds.attrs["version"] = now
+
+    return ds
+
+
+def _add_creation_date(ds):
+    """add version attribute"""
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%Z")
+    ds.attrs["creation_date"] = now
 
     return ds
 
@@ -480,9 +488,9 @@ def _check_cv(ds, cv_table):
         cv_values = cv.get(attr)
         v = ds.attrs.get(attr)
         if not v:
-            logger.warn(f"{attr} not found")
+            logger.error(f"{attr} not found")
         elif cv_values and v not in list(cv_values):
-            logger.warn(f"value '{v[0:50]}...' for '{attr}' not in {list(cv_values)}")
+            logger.error(f"value '{v[0:50]}...' for '{attr}' not in {list(cv_values)}")
 
 
 def _add_derived_attrs(ds, cv_table):
@@ -626,6 +634,7 @@ def cmorize(
     # ensure grid mappings and bounds in coords, not in data_vars
     ds = xr.decode_cf(ds, decode_coords="all")
 
+    # bounds variables should not have any attributes
     ds = _remove_bounds_attrs(ds)
 
     if mip_table is None:
@@ -663,6 +672,7 @@ def cmorize(
         ds = _update_global_attrs(ds, dataset_table)
 
     ds = _add_version_attr(ds)
+    ds = _add_creation_date(ds)
 
     if mip_table.get("Header"):
         ds = _add_header_attrs(ds, mip_table.get("Header"), cv_table)
@@ -776,6 +786,7 @@ class Cmorizer:
             dataset_table=dataset_table,
             coords_table=self.tables.coords,
             cv_table=self.tables.cv,
+            grids_table=self.tables.grids,
             mapping_table=mapping_table,
             time_units=time_units,
         )
