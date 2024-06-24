@@ -10,7 +10,6 @@ def create_regular_ds():
     lon = [-99.83 + 180.0, -99.32 + 180.0]
     lat = [42.25, 42.21]
     time = pd.date_range("2014-09-06", periods=3)
-    reference_time = pd.Timestamp("2014-09-05")
 
     ds = xr.Dataset(
         data_vars=dict(
@@ -21,9 +20,7 @@ def create_regular_ds():
             lon=(["x"], lon),
             lat=(["y"], lat),
             time=time,
-            reference_time=reference_time,
         ),
-        attrs=dict(description="Weather related data."),
     )
 
     return ds
