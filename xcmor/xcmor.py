@@ -589,6 +589,7 @@ def cmorize(
     mapping_table=None,
     guess=True,
     time_units=None,
+    transpose=True,
 ):
     """Lazy cmorization.
 
@@ -685,7 +686,8 @@ def cmorize(
     ds.attrs = collections.OrderedDict(sorted(ds.attrs.items()))
 
     # transpose to COARDS
-    ds = _transpose(ds)
+    if transpose is True:
+        ds = _transpose(ds)
 
     return ds
 
@@ -733,7 +735,13 @@ class Cmorizer:
         return self.tables.cv["CV"].get("required_global_attributes")
 
     def cmorize(
-        self, ds, mip_table, dataset_table, mapping_table=None, time_units=None
+        self,
+        ds,
+        mip_table,
+        dataset_table,
+        mapping_table=None,
+        time_units=None,
+        **kwargs,
     ):
         """Lazy cmorization.
 
@@ -789,4 +797,5 @@ class Cmorizer:
             grids_table=self.tables.grids,
             mapping_table=mapping_table,
             time_units=time_units,
+            **kwargs,
         )
