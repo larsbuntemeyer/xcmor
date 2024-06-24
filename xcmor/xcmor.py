@@ -26,7 +26,7 @@ def _transpose(ds):
     axis = ["T", "Z", "Y", "X"]
     cf_dims = list(ds.cf.dims.keys())
     order = [ax for ax in axis if ax in cf_dims]
-
+    logger.debug(f"transposing order: {order}")
     return ds.cf.transpose(*order)
 
 
@@ -683,7 +683,7 @@ def cmorize(
 
     # sort attributes
     ds.attrs = collections.OrderedDict(sorted(ds.attrs.items()))
-    return ds
+
     # transpose to COARDS
     ds = _transpose(ds)
 
