@@ -229,7 +229,7 @@ def test_cmorizer():
     )
 
 
-def test_cmorizer_cmorize():
+def test_cmorizer_cmorize_cmip6():
     ds = reg_ds.rename(temperature="tas")
     cmor = Cmorizer(project="CMIP6")
     mip_table = "Amon"

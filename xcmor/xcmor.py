@@ -256,7 +256,7 @@ def _add_coord_attrs(da, axis_entry):
 
     out_name = axis_entry["out_name"]
     coord_key = out_name
-
+    logger.debug(f"adding coordinate attribtes: {out_name}")
     if coord_key not in da.coords:
         coord_key = _find_coord_key(da, axis_entry)
 
@@ -272,11 +272,11 @@ def _add_coord_attrs(da, axis_entry):
     # add required attributes
     da.coords[out_name].attrs = {k: v for k, v in axis_entry.items() if v}
 
-    dims = da.coords[out_name].dims
+    # dims = da.coords[out_name].dims
 
-    # this is a coordinate variable (not auxilliary), swap dims
-    if len(dims) == 1:
-        da = da.swap_dims({dims[0]: out_name})
+    ## this is a coordinate variable (not auxilliary), swap dims
+    # if len(dims) == 1:
+    #    da = da.swap_dims({dims[0]: out_name})
 
     return da
 
@@ -360,6 +360,8 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
     """
     all_dims = []
     auxiliary = False
+    has_xy = False
+    has_lonlat = False
     curvilinear = _is_curvilinear(ds)
     has_grid_mapping = ds.cf.grid_mapping_names != {}
 
@@ -367,8 +369,18 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
     logger.debug(f"has_grid_mapping: {has_grid_mapping}")
 
     x, y = _get_x_y_coords(ds)
-    lon, lat = _get_lon_lat_coords(ds)
+    has_xy = x is not None and y is not None
 
+    if not has_xy:
+        message = "Input dataset should have 1D linear coordinates!"
+        logger.critical(message)
+        raise Exception(message)
+
+    lon, lat = _get_lon_lat_coords(ds)
+    has_lonlat = lon is not None and lat is not None
+
+    logger.debug(f"has lonlat: {has_lonlat}")
+    logger.debug(f"has xy: {has_xy}")
     logger.debug(f"x-axis, y-axis: {x.name}, {y.name}")
     logger.debug(f"longitude, latitude: {lon.name}, {lat.name}")
 
@@ -400,6 +412,7 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
             "no grid mapping found although the dataset seems to have auxilliary coordinates"
         )
 
+    # combine coordinates and grids table
     if grids_table and auxiliary is True:
         coords_table = (
             coords_table
@@ -434,6 +447,9 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
 
         if coordinates:
             ds[var].attrs["coordinates"] = coordinates
+            # remove encoding entry if neccessary
+            if "coordinates" in ds[var].encoding:
+                del ds[var].encoding["coordinates"]
 
         all_dims.extend([v["out_name"] for v in dims.values()])
 
@@ -576,6 +592,19 @@ def _add_header_attrs(ds, header, cv_table=None):
     return ds
 
 
+def _swap_dims(ds):
+    """ensure all 1D coordinates to be dimension coordinates"""
+    swaps = {}
+    for coord in ds.coords:
+        # this is a coordinate variable (not auxilliary), swap dims
+        dims = ds.coords[coord].dims
+        if len(dims) == 1 and dims[0] != coord:
+            logger.debug(f"coord: {coord}")
+            swaps[dims[0]] = coord
+    logger.info(f"swap dims: {swaps}")
+    return ds.swap_dims(swaps)
+
+
 @read_tables(
     tables=["mip_table", "coords_table", "dataset_table", "cv_table", "mapping_table"]
 )
@@ -590,6 +619,7 @@ def cmorize(
     guess=True,
     time_units=None,
     transpose=True,
+    decode=True,
 ):
     """Lazy cmorization.
 
@@ -618,13 +648,17 @@ def cmorize(
     time_units: str
         Time units for NetCDF encoding. Default is ``days since`` the beginning of the
         time interval.
+    transpose: logical
+        Transpose dataset to COARDS conventions if neccessary.
+    decode: logical
+        Decode output dataset, e.g., to interpret coordinates attributes. If ``decode=True``,
+        ``xr.decode_cf`` will be applied on the output dataset.
 
     Returns
     -------
     Cmorized Dataset.
 
     """
-    # guess = True
 
     ds = ds.copy()
 
@@ -633,6 +667,7 @@ def cmorize(
         ds = ds.to_dataset()
 
     # ensure grid mappings and bounds in coords, not in data_vars
+    # so that cf_xarray can understand everything...
     ds = xr.decode_cf(ds, decode_coords="all")
 
     # bounds variables should not have any attributes
@@ -669,6 +704,9 @@ def cmorize(
         )
         ds = _interpret_coord_attrs(ds, time_units)
 
+    # ensure all 1D coordinates to be dimension coordinates
+    ds = _swap_dims(ds)
+
     if dataset_table:
         ds = _update_global_attrs(ds, dataset_table)
 
@@ -688,6 +726,9 @@ def cmorize(
     # transpose to COARDS
     if transpose is True:
         ds = _transpose(ds)
+
+    if decode is True:
+        ds = xr.decode_cf(ds)
 
     return ds
 
