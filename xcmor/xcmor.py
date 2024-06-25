@@ -256,7 +256,7 @@ def _add_coord_attrs(da, axis_entry):
 
     out_name = axis_entry["out_name"]
     coord_key = out_name
-
+    logger.debug(f"adding coordinate attribtes: {out_name}")
     if coord_key not in da.coords:
         coord_key = _find_coord_key(da, axis_entry)
 
@@ -272,11 +272,11 @@ def _add_coord_attrs(da, axis_entry):
     # add required attributes
     da.coords[out_name].attrs = {k: v for k, v in axis_entry.items() if v}
 
-    dims = da.coords[out_name].dims
+    # dims = da.coords[out_name].dims
 
-    # this is a coordinate variable (not auxilliary), swap dims
-    if len(dims) == 1:
-        da = da.swap_dims({dims[0]: out_name})
+    ## this is a coordinate variable (not auxilliary), swap dims
+    # if len(dims) == 1:
+    #    da = da.swap_dims({dims[0]: out_name})
 
     return da
 
@@ -400,6 +400,7 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
             "no grid mapping found although the dataset seems to have auxilliary coordinates"
         )
 
+    # combine coordinates and grids table
     if grids_table and auxiliary is True:
         coords_table = (
             coords_table
@@ -434,6 +435,9 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
 
         if coordinates:
             ds[var].attrs["coordinates"] = coordinates
+            # remove encoding entry if neccessary
+            if "coordinates" in ds[var].encoding:
+                del ds[var].encoding["coordinates"]
 
         all_dims.extend([v["out_name"] for v in dims.values()])
 
@@ -576,6 +580,17 @@ def _add_header_attrs(ds, header, cv_table=None):
     return ds
 
 
+def _swap_dims(ds):
+    """ensure all 1D coordinates to be dimension coordinates"""
+    for coord in ds.coords:
+        # this is a coordinate variable (not auxilliary), swap dims
+        dims = ds.coords[coord].dims
+        if len(dims) == 1:
+            logger.debug(f"swap dims: {dims[0]}: {coord}")
+            ds = ds.swap_dims({dims[0]: coord})
+    return ds
+
+
 @read_tables(
     tables=["mip_table", "coords_table", "dataset_table", "cv_table", "mapping_table"]
 )
@@ -590,6 +605,7 @@ def cmorize(
     guess=True,
     time_units=None,
     transpose=True,
+    decode=True,
 ):
     """Lazy cmorization.
 
@@ -618,6 +634,10 @@ def cmorize(
     time_units: str
         Time units for NetCDF encoding. Default is ``days since`` the beginning of the
         time interval.
+    transpose: logical
+        Transpose dataset to COARDS conventions if neccessary.
+    decode: logical
+        Decode output dataset, e.g., to interpret coordinates attributes.
 
     Returns
     -------
@@ -662,6 +682,9 @@ def cmorize(
 
     # interprets variable attributes
     ds = _interpret_var_attrs(ds, mip_table.get("variable_entry") or mip_table)
+
+    # ensure all 1D coordinates to be dimension coordinates
+    ds = _swap_dims(ds)
 
     if coords_table:
         ds = _interpret_var_dims(
