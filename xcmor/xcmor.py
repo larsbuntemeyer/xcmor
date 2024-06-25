@@ -637,7 +637,8 @@ def cmorize(
     transpose: logical
         Transpose dataset to COARDS conventions if neccessary.
     decode: logical
-        Decode output dataset, e.g., to interpret coordinates attributes.
+        Decode output dataset, e.g., to interpret coordinates attributes. If ``decode=True``,
+        ``xr.decode_cf`` will be applied on the output dataset.
 
     Returns
     -------
