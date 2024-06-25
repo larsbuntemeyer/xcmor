@@ -644,7 +644,6 @@ def cmorize(
     Cmorized Dataset.
 
     """
-    # guess = True
 
     ds = ds.copy()
 
@@ -653,6 +652,7 @@ def cmorize(
         ds = ds.to_dataset()
 
     # ensure grid mappings and bounds in coords, not in data_vars
+    # so that cf_xarray can understand everything...
     ds = xr.decode_cf(ds, decode_coords="all")
 
     # bounds variables should not have any attributes
@@ -711,6 +711,9 @@ def cmorize(
     # transpose to COARDS
     if transpose is True:
         ds = _transpose(ds)
+
+    if decode is True:
+        ds = xr.decode_cf(ds)
 
     return ds
 
