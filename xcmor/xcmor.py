@@ -360,6 +360,8 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
     """
     all_dims = []
     auxiliary = False
+    has_xy = False
+    has_lonlat = False
     curvilinear = _is_curvilinear(ds)
     has_grid_mapping = ds.cf.grid_mapping_names != {}
 
@@ -367,8 +369,18 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
     logger.debug(f"has_grid_mapping: {has_grid_mapping}")
 
     x, y = _get_x_y_coords(ds)
-    lon, lat = _get_lon_lat_coords(ds)
+    has_xy = x is not None and y is not None
 
+    if not has_xy:
+        message = "Input dataset should have 1D linear coordinates!"
+        logger.critical(message)
+        raise Exception(message)
+
+    lon, lat = _get_lon_lat_coords(ds)
+    has_lonlat = lon is not None and lat is not None
+
+    logger.debug(f"has lonlat: {has_lonlat}")
+    logger.debug(f"has xy: {has_xy}")
     logger.debug(f"x-axis, y-axis: {x.name}, {y.name}")
     logger.debug(f"longitude, latitude: {lon.name}, {lat.name}")
 
@@ -582,13 +594,15 @@ def _add_header_attrs(ds, header, cv_table=None):
 
 def _swap_dims(ds):
     """ensure all 1D coordinates to be dimension coordinates"""
+    swaps = {}
     for coord in ds.coords:
         # this is a coordinate variable (not auxilliary), swap dims
         dims = ds.coords[coord].dims
-        if len(dims) == 1:
-            logger.debug(f"swap dims: {dims[0]}: {coord}")
-            ds = ds.swap_dims({dims[0]: coord})
-    return ds
+        if len(dims) == 1 and dims[0] != coord:
+            logger.debug(f"coord: {coord}")
+            swaps[dims[0]] = coord
+    logger.info(f"swap dims: {swaps}")
+    return ds.swap_dims(swaps)
 
 
 @read_tables(
@@ -684,14 +698,14 @@ def cmorize(
     # interprets variable attributes
     ds = _interpret_var_attrs(ds, mip_table.get("variable_entry") or mip_table)
 
-    # ensure all 1D coordinates to be dimension coordinates
-    ds = _swap_dims(ds)
-
     if coords_table:
         ds = _interpret_var_dims(
             ds, coords_table.get("axis_entry") or coords_table, grids_table
         )
         ds = _interpret_coord_attrs(ds, time_units)
+
+    # ensure all 1D coordinates to be dimension coordinates
+    ds = _swap_dims(ds)
 
     if dataset_table:
         ds = _update_global_attrs(ds, dataset_table)
