@@ -734,33 +734,35 @@ def cmorize(
 
 
 class Cmorizer:
+    """
+    Cmorizer class supporting preconfigured MIPs.
+
+    Parameters
+    ----------
+    project : str, optional
+        Pre-configures MIP, e.g.,
+
+        - CMIP6
+        - CORDEX
+
+    url : str, optional
+        Base URL or directory of cmor tables.
+
+    template : str, optional
+        CMOR talbe naming template, e.g.::
+
+            CMIP6_{table_id}.json
+
+        e.g. CMIP6_Amon.json
+
+    Returns
+    -------
+    cmorizer : Cmorizer object.
+
+    """
+
     def __init__(self, project=None, url=None, template=None):
-        """
-        Cmorizer class supporting preconfigured MIPs.
 
-        Parameters
-        ----------
-        project : str, optional
-            Pre-configures MIP, e.g.,
-
-            - CMIP6
-            - CORDEX
-
-        url : str, optional
-            Base URL or directory of cmor tables.
-
-        template : str, optional
-            CMOR talbe naming template, e.g.::
-
-                CMIP6_{table_id}.json
-
-            e.g. CMIP6_Amon.json
-
-        Returns
-        -------
-        cmorizer : Cmorizer object.
-
-        """
         self._init_tables(project, url, template)
 
     def _init_tables(self, project, url, template):
