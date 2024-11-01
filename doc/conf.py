@@ -143,7 +143,8 @@ pygments_style = "igor"
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = "furo"
+# html_theme = "furo"
+html_theme = "sphinx_book_theme"
 # html_theme = "pydata_sphinx_theme"
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -261,8 +262,17 @@ autodoc_default_options = {
     "undoc-members": True,
     "private-members": True,
 }
-napoleon_use_param = True
-napoleon_use_rtype = True
+# napoleon_use_param = True
+# napoleon_use_rtype = True
 
 numpydoc_show_class_members = False
 numpydoc_validation_checks = {"all"}
+
+autodoc_typehints = "none"
+# Napoleon configurations
+
+napoleon_google_docstring = False
+napoleon_numpy_docstring = True
+napoleon_use_param = False
+napoleon_use_rtype = False
+napoleon_preprocess_types = True

@@ -20,7 +20,8 @@ dependencies:
   - pooch
   - pint
   - regex
-  - furo
+  #- furo
+  - sphinx-book-theme
   - myst-nb
   - pytest
   - compliance-checker
