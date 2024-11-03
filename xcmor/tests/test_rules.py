@@ -6,13 +6,14 @@ from ..rules import rules
 
 
 def test_rules():
+    varname = "foo"
     da = xr.DataArray(
         data=[1, 4, 2, 9],
         dims=("x"),
         coords={"x": [0, 1, 2, 3]},
     )
     da.attrs["type"] = "float64"
-    da.name = "variable"
+    da.name = varname
     da.attrs = {
         "coordinates": "longitude",
         "type": "real",
@@ -21,24 +22,28 @@ def test_rules():
         "valid_max": 10,
         "standard_name": "air_temperature",
     }
-    for attr in da.attrs:
+    ds = da.to_dataset()
+    for attr in ds[varname].attrs:
         if hasattr(rules, attr):
-            da = getattr(rules, attr)(da)
+            ds = getattr(rules, attr)(ds, varname)
 
-    assert da.name == "tas"
-    assert da.dtype == dtype_map["real"]
+    assert ds[varname].name == "foo"
+    assert ds[varname].dtype == dtype_map["real"]
 
-    da.attrs = {
+    ds[varname].attrs = {
         "standard_name": "air_temp",
     }
     with pytest.raises(Exception) as e_info:
-        rules.standard_name(da)
-        assert e_info == f"{da.standard_name} is not a valid standard name"
+        rules.standard_name(ds, varname)
+        assert e_info == f"{ds[varname].standard_name} is not a valid standard name"
 
-    da.attrs = {
+    ds[varname].attrs = {
         "valid_min": 0,
     }
-    da[:] = [2.0, 4.0, 2.0, 9.0]
+    ds[varname][:] = [2.0, 4.0, 2.0, 9.0]
     with pytest.raises(Exception) as e_info:
-        rules.valid_min(da)
-        assert e_info == f"{da.name} is violating valid_min: {da.valid_min}"
+        rules.valid_min(ds, varname)
+        assert (
+            e_info
+            == f"{ds[varname].name} is violating valid_min: {ds[varname].valid_min}"
+        )
