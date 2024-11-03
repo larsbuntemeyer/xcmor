@@ -211,11 +211,12 @@ def _interpret_var_attrs(ds, mip_table):
     """
 
     for v in ds.data_vars:
-        da = ds[v]
-        for attr in da.attrs.copy():
+        attrs = ds[v].attrs.copy()
+        for attr in attrs:
             if hasattr(rules, attr):
-                da = getattr(rules, attr)(da)
+                ds = getattr(rules, attr)(ds, v)
 
+        da = ds[v]
         # handle units
         if "original_units" in da.attrs:
             da = _units_convert(da)
@@ -235,13 +236,14 @@ def _interpret_coord_attrs(ds, time_units=None):
     """
 
     for v in ds.coords:
-        logger.debug(f"interpreting coordinate attributes: {v}")
+        # logger.debug(f"interpreting coordinate attributes: {v}")
         da = ds.coords[v]
         for attr in da.attrs.copy():
             if hasattr(rules, attr):
-                logger.debug(f"interpreting attribute: {attr}")
-                da = getattr(rules, attr)(da)
-        ds = ds.assign_coords({da.name: da})
+                # logger.debug(f"interpreting attribute: {attr}")
+                apply_rule = getattr(rules, attr)
+                ds = apply_rule(ds, v)
+        # ds = ds.assign_coords({da.name: da})
 
     if "time" in ds:
         # time = _encode_time(ds, time_units)

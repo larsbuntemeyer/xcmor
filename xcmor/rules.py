@@ -9,7 +9,8 @@ class rules:
     drop = True
 
     @classmethod
-    def type(cls, obj):
+    def type(cls, ds, name):
+        obj = ds[name]
         """apply dtype rule to dataarray"""
         axis = obj.attrs.get("axis")
         dtype = obj.attrs["type"]
@@ -17,27 +18,29 @@ class rules:
         if axis and axis == "T":
             obj.encoding["dtype"] = dtype_map[dtype]
             del obj.attrs["type"]
-            return obj
+            return ds
         if obj.dtype != dtype_map[dtype]:
-            logger.warning(
+            logger.info(
                 f"converting {obj.name or 'data'} from {obj.dtype} to {dtype_map[dtype]}"
             )
-            obj = obj.astype(dtype_map[dtype])
+            ds[name] = obj.astype(dtype_map[dtype])
 
-        return obj
+        return ds
 
     @classmethod
-    def out_name(cls, obj):
+    def out_name(cls, ds, name):
         """apply renaming rule"""
+        obj = ds[name]
         out_name = obj.attrs["out_name"]
         obj.name = out_name
         # obj.rename_vars({v: out_name})
         if cls.drop is True:
             del obj.attrs["out_name"]
-        return obj
+        return ds
 
     @classmethod
-    def valid_min(cls, obj):
+    def valid_min(cls, ds, name):
+        obj = ds[name]
         valid_min = obj.attrs.get("valid_min")
         if valid_min:
             try:
@@ -48,10 +51,11 @@ class rules:
                 )
         if cls.drop is True:
             del obj.attrs["valid_min"]
-        return obj
+        return ds
 
     @classmethod
-    def valid_max(cls, obj):
+    def valid_max(cls, ds, name):
+        obj = ds[name]
         valid_max = obj.attrs.get("valid_max")
         if valid_max:
             try:
@@ -62,10 +66,11 @@ class rules:
                 )
         if cls.drop is True:
             del obj.attrs["valid_max"]
-        return obj
+        return ds
 
     @classmethod
-    def standard_name(cls, obj):
+    def standard_name(cls, ds, name):
+        obj = ds[name]
         from cf_xarray.utils import parse_cf_standard_name_table
 
         sname = obj.attrs["standard_name"]
@@ -74,7 +79,22 @@ class rules:
             raise Exception(
                 f"'{obj.name+'': ' or ''}{sname} is not a valid standard name."
             )
-        return obj
+        return ds
+
+    @classmethod
+    def must_have_bounds(cls, ds, name):
+        obj = ds[name]
+        bounds_required = obj.attrs.get("must_have_bounds") == "yes"
+        if bounds_required:
+            logger.debug(f"checking bounds for {name}: {bounds_required}")
+        if bounds_required and not ds.cf.bounds.get(name):
+            logger.warning(f"{name} must have bounds")
+            try:
+                logger.info(f"adding bounds for {name}")
+                return ds.cf.add_bounds(name)
+            except Exception as e:
+                logger.error(f"Failed to add bounds to {name}: {e}")
+        return ds
 
     # @classmethod
     # def requested(cls, obj):
