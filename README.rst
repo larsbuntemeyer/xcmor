@@ -31,13 +31,21 @@ Actually, the process of *cmorization* mostly deals with making climate model ou
 compliant with the Climate and Weather Forecast meta data conventions
 (`CF-conventions <https://cfconventions.org/>`_) and, in most cases, does not really touch the data
 itself. This makes it ideal for handling cmorization with xarray data structures since
-they allow easy manipulation of meta data using python dictionaries.
+they allow easy manipulation of meta data using python dictionaries. Furthermore, ``xcmor`` 
+heavily relies on `cf_xarray <https://github.com/xarray-contrib/cf-xarray>`_ under the hood to
+try to make cmorization as easy as possible.
 
 While the `original cmor library <https://github.com/PCMDI/cmor>`_ offers a wide variety
 of APIs for different programming languages (including python) to rewrite climate model output
 to NetCDF files, xcmor focuses more on lazy cmorization in memory without neccessarily
 having to actually rewrite the dataset to a filesystem. However, this is, of course, also possible
 using xarrays `versatile IO features <https://docs.xarray.dev/en/stable/user-guide/io.html>`_.
+
+Features
+--------
+* Handling of bounds variables if neccessary.
+* Easy handling of cmor tables and its interpretation.
+* Handling of auxilliary coordinates and grid mappings.
 
 Example
 -------
