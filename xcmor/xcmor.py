@@ -27,7 +27,7 @@ def _transpose(ds):
     cf_dims = list(ds.cf.dims.keys())
     order = [ax for ax in axis if ax in cf_dims]
     logger.debug(f"transposing order: {order}")
-    return ds.cf.transpose(*order)
+    return ds.cf.transpose(*order, ...)
 
 
 def _encode_time(ds, cf_units=None):
@@ -99,11 +99,13 @@ def _get_x_y_coords(obj):
     X = None
     Y = None
     # cfxr finds the X and Y coordinates right away
-    if "X" in obj.cf.coords and "Y" in obj.cf.coords:
+    try:
+        # if "X" in obj.cf.coords and "Y" in obj.cf.coords:
         X = obj.cf["X"]
         Y = obj.cf["Y"]
-    # cfxr finds longitude and latitude, let's check if they are 1D
-    elif "longitude" in obj.cf.coords and "latitude" in obj.cf.coords:
+    except KeyError as e:
+        logger.warning(e)
+        # cfxr finds longitude and latitude, let's check if they are 1D
         lon = obj.cf["longitude"]
         lat = obj.cf["latitude"]
         if lon.ndim == 1 and lat.ndim == 1:
@@ -113,6 +115,9 @@ def _get_x_y_coords(obj):
     if X is not None and Y is not None:
         X.attrs["axis"] = "X"
         Y.attrs["axis"] = "Y"
+    else:
+        logger.error("could not find X and Y coordinates")
+        raise Exception("could not find X and Y coordinates")
     return X, Y
 
 
@@ -234,7 +239,7 @@ def _interpret_coord_attrs(ds, time_units=None):
                 da = getattr(rules, attr)(da)
         ds = ds.assign_coords({da.name: da})
 
-    if "time" in ds.cf.coords:
+    if "time" in ds:
         ds = ds.cf.assign_coords(time=_encode_time(ds, time_units))
 
     return ds
@@ -357,6 +362,8 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
     in the mip table and update coordinates acoording to
     meta data in the coordinates table and grids table.
 
+    See also: https://cfconventions.org/cf-conventions/cf-conventions.html#coordinate-system
+
     """
     all_dims = []
     auxiliary = False
@@ -384,6 +391,7 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
     logger.debug(f"x-axis, y-axis: {x.name}, {y.name}")
     logger.debug(f"longitude, latitude: {lon.name}, {lat.name}")
 
+    # check if lon lat are auxilliary coordinates
     if not (lon.equals(x) and lat.equals(y)):
         auxiliary = True
 
@@ -424,7 +432,7 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
         dims = ds[var].attrs.get("dimensions")
         if not dims:
             dims = _guess_dims_attr(ds[var])
-            logger.debug(f"dims of {var}: {dims}")
+            logger.debug(f"guessing dims of {var}: {dims}")
         else:
             del ds[var].attrs["dimensions"]
             dims = dims.split()
@@ -436,7 +444,7 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
         ds = _apply_dims(ds, dims)
 
         # add coordinates attribute, e.g., for 0D coordinate variables
-        # e.g., height2m, if not a dataarray index.
+        # e.g., height2m, if not a dataarray index:
         coordinates = " ".join(
             [
                 d["out_name"]
@@ -446,8 +454,9 @@ def _interpret_var_dims(ds, coords_table, grids_table=None, drop=False):
         )
 
         if coordinates:
+            # Set coordinates attribute
             ds[var].attrs["coordinates"] = coordinates
-            # remove encoding entry if neccessary
+            # remove encoding entry if present
             if "coordinates" in ds[var].encoding:
                 del ds[var].encoding["coordinates"]
 
