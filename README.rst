@@ -31,7 +31,7 @@ Actually, the process of *cmorization* mostly deals with making climate model ou
 compliant with the Climate and Weather Forecast meta data conventions
 (`CF-conventions <https://cfconventions.org/>`_) and, in most cases, does not really touch the data
 itself. This makes it ideal for handling cmorization with xarray data structures since
-they allow easy manipulation of meta data using python dictionaries. Furthermore, ``xcmor`` 
+they allow easy manipulation of meta data using python dictionaries. Furthermore, ``xcmor``
 heavily relies on `cf_xarray <https://github.com/xarray-contrib/cf-xarray>`_ under the hood to
 try to make cmorization as easy as possible.
 
