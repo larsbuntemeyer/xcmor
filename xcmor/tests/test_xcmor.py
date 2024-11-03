@@ -61,6 +61,7 @@ def test_transpose():
     ds_out = _transpose(reg_ds)
     # no transposition needed
     assert list(ds_out.temperature.dims) == ["x", "y", "time"]
+    # transposition needed
     reg_ds.lon.attrs["axis"] = "X"
     reg_ds.lat.attrs["axis"] = "Y"
     reg_ds.time.attrs["axis"] = "T"

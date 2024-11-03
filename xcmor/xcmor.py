@@ -36,7 +36,7 @@ def _encode_time(ds, cf_units=None):
     """Encode time units and calendar"""
     time = ds.cf["time"]
     cf_units = cf_units or time.attrs.get("units") or time.encoding.get("units")
-
+    # print(time.name, cf_units)
     if cf_units is None:
         cf_units = "days since ?"
     else:
@@ -235,14 +235,17 @@ def _interpret_coord_attrs(ds, time_units=None):
     """
 
     for v in ds.coords:
+        logger.debug(f"interpreting coordinate attributes: {v}")
         da = ds.coords[v]
         for attr in da.attrs.copy():
             if hasattr(rules, attr):
+                logger.debug(f"interpreting attribute: {attr}")
                 da = getattr(rules, attr)(da)
         ds = ds.assign_coords({da.name: da})
 
     if "time" in ds:
-        ds = ds.cf.assign_coords(time=_encode_time(ds, time_units))
+        # time = _encode_time(ds, time_units)
+        ds = ds.assign_coords(time=_encode_time(ds, time_units))
 
     return ds
 
@@ -272,8 +275,9 @@ def _add_coord_attrs(da, axis_entry):
         logger.info(f"adding coordinate: {out_name}")
         value = float(axis_entry["value"])
         da = da.assign_coords({out_name: DataArray(value)})
-    else:
+    elif coord_key != out_name:
         # rename coord key to actual coordinate out_name
+        logger.debug(f"renaming coordinate: {coord_key} to {out_name}")
         da = da.cf.rename({coord_key: out_name})
 
     # add required attributes
