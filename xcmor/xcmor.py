@@ -26,8 +26,10 @@ def _transpose(ds):
     axis = ["T", "Z", "Y", "X"]
     cf_dims = list(ds.cf.dims.keys())
     order = [ax for ax in axis if ax in cf_dims]
-    logger.debug(f"transposing order: {order}")
-    return ds.cf.transpose(*order, ...)
+    if order:
+        logger.debug(f"transposing order: {order}")
+        return ds.cf.transpose(*order, ...)
+    return ds
 
 
 def _encode_time(ds, cf_units=None):
