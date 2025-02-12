@@ -58,6 +58,7 @@ tag_regex= "^(?P<prefix>v)?(?P<version>[^\\+]+)(?P<suffix>.*)?$"
 target-version = ["py38"]
 
 [tool.ruff]
+fix = true
 target-version = "py38"
 builtins = ["ellipsis"]
 exclude = [
@@ -86,7 +87,7 @@ select = [
     "UP",
 ]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["xcmor"]
 known-third-party = [
     "dask",
