@@ -8,7 +8,7 @@ dependencies:
   - netcdf4
   - lxml
   - pandas
-  - pint<=0.23
+  - pint #<=0.23
   - pint-xarray
   - pooch
   - rich
