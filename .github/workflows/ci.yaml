@@ -85,7 +85,7 @@ jobs:
         shell: bash -l {0}
         run: |
           pytest -n 2
-          
+
   mypy:
     name: mypy
     runs-on: "ubuntu-latest"
