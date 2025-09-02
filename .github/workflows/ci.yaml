@@ -107,7 +107,7 @@ jobs:
           cache-environment: true
           create-args: >-
             python=${{ matrix.python-version }}
-      - name: Install cf_xarray
+      - name: Install xcmor
         run: |
           python -m pip install --no-deps -e .
       - name: Install mypy
@@ -115,7 +115,7 @@ jobs:
           python -m pip install 'mypy'
       - name: Run mypy
         run: |
-          python -m mypy --install-types --non-interactive --cobertura-xml-report mypy_report cf_xarray/
+          python -m mypy --install-types --non-interactive --cobertura-xml-report mypy_report xcmor/
       - name: Upload mypy coverage to Codecov
         uses: codecov/codecov-action@v5.5.0
         with:
