@@ -103,7 +103,7 @@ jobs:
         uses: mamba-org/setup-micromamba@v2
         with:
           environment-file: ci/environment.yml
-          environment-name: cf_xarray_test
+          environment-name: xcmor_test
           cache-environment: true
           create-args: >-
             python=${{ matrix.python-version }}
