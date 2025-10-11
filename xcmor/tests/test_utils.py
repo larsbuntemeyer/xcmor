@@ -5,6 +5,7 @@ from ..utils import (
     _tmp_table,
     filter_table_by_value,
     parse_cell_methods,
+    posix_to_python_regex,
     read_tables,
     table_to_dataframe,
 )
@@ -91,3 +92,65 @@ def test_project_tables():
     assert isinstance(cmip6.terms, dict)
     assert isinstance(cmip6["Amon"], dict)
     assert isinstance(cordex["mon"], dict)
+
+
+@pytest.mark.parametrize(
+    "posix_pattern,expected_py,valid,invalid",
+    [
+        (
+            r"r[[:digit:]]\{1,\}i[[:digit:]]\{1,\}p[[:digit:]]\{1,\}f[[:digit:]]\{1,\}$",
+            r"r[0-9]{1,}i[0-9]{1,}p[0-9]{1,}f[0-9]{1,}$",
+            ["r1i1p1f1", "r12i3p45f6"],
+            ["xr1i1p1f1", "r1i1p1f", "r1i1p1f1x"],
+        ),
+        (
+            r"[[:alpha:]]\{3\}[[:digit:]]\{2,4\}",
+            r"[A-Za-z]{3}[0-9]{2,4}",
+            ["Abc12", "abc1234"],
+            ["ab12", "AB12", "abcd123"],
+        ),
+        (
+            r"a[[:digit:]]\{1,\}b",
+            r"a[0-9]{1,}b",
+            ["a1b", "a123b"],
+            ["ab", "a_b"],
+        ),
+        (
+            r"foo\([[:digit:]]\{2\}\)",
+            r"foo([0-9]{2})",
+            ["foo12", "foo99"],
+            ["foo1", "foo123", "foo2"],
+        ),
+        (
+            # pattern using an unsupported collating symbol should pass through unchanged
+            r"[.ch.]",
+            r"[.ch.]",
+            [".", "c", "h"],
+            ["ch"],
+        ),
+    ],
+)
+def test_posix_to_python_regex(posix_pattern, expected_py, valid, invalid):
+    """Test conversion of POSIX BRE subset to Python regex and matching semantics."""
+    converted = posix_to_python_regex(posix_pattern)
+    assert converted == expected_py
+    # compile; if pattern unchanged (e.g., unsupported features) it may not be valid Python
+    # In that case we skip match assertions.
+    import re as _re
+
+    try:
+        regex_obj = _re.compile(converted)
+    except Exception:
+        # If compilation fails we only assert conversion outcome
+        return
+
+    for s in valid:
+        assert regex_obj.fullmatch(s), f"Should match: {s} with {converted}"
+    for s in invalid:
+        assert not regex_obj.fullmatch(s), f"Should NOT match: {s} with {converted}"
+
+
+def test_posix_to_python_regex_idempotent_simple():
+    # Patterns already Python style should stay the same
+    pat = r"abc[0-9]{2,}"  # no POSIX classes
+    assert posix_to_python_regex(pat) == pat

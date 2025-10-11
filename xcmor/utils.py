@@ -163,3 +163,71 @@ def read_tables(tables):
         return wrapper_read_tables
 
     return read_tables_decorator
+
+
+def posix_to_python_regex(posix_pattern: str) -> str:
+    r"""Convert a (subset of) POSIX BRE pattern to a Python ``re`` pattern.
+
+    Handles:
+      * POSIX character classes inside a bracket expression:  [[:digit:]] etc.
+      * Quantifiers written as \{m\}, \{m,n\}, \{m,\}
+      * Escaped grouping parentheses \( and \) -> ( and )
+
+    Not (yet) handled:
+      * Collating symbols ([.ch.])
+      * Equivalence classes ([=a=])
+      * Back references & locale nuances
+
+    Parameters
+    ----------
+    posix_pattern : str
+        A raw string containing a POSIX BRE style pattern.
+
+    Returns
+    -------
+    str
+        Python ``re`` compatible pattern.
+    """
+    # Map of supported POSIX character classes (without the surrounding [: :])
+    posix_classes = {
+        "alnum": "A-Za-z0-9",
+        "alpha": "A-Za-z",
+        "digit": "0-9",
+        "lower": "a-z",
+        "upper": "A-Z",
+        "blank": " \t",  # space or tab
+        "space": r"\s",  # any whitespace (Python semantics)
+        "xdigit": "0-9A-Fa-f",
+        "punct": r"!\"#$%&'()*+,\-./:;<=>?@[\\\\]^_`{|}~",  # escaped - and backslash
+        # Convenience (not POSIX standard)
+        "word": "A-Za-z0-9_",
+    }
+
+    # Replace POSIX classes of the form [[:alpha:]] using a callback
+    cls_pattern = re.compile(
+        r"\[\[:(alnum|alpha|digit|lower|upper|blank|space|xdigit|punct|word):\]\]"
+    )
+
+    def _class_repl(m: re.Match) -> str:
+        name = m.group(1)
+        rep = posix_classes[name]
+        # If the replacement starts with a backslash (e.g. \s) we can just return it;
+        # otherwise wrap in [] to form the character class.
+        if rep.startswith("\\"):
+            return rep
+        return f"[{rep}]"
+
+    posix_pattern = cls_pattern.sub(_class_repl, posix_pattern)
+
+    # Convert escaped quantifiers. Order matters (longer forms first)
+    # \{m,n\}
+    posix_pattern = re.sub(r"\\\{(\d+),(\d+)\\\}", r"{\1,\2}", posix_pattern)
+    # \{m,\}
+    posix_pattern = re.sub(r"\\\{(\d+),\\\}", r"{\1,}", posix_pattern)
+    # \{m\}
+    posix_pattern = re.sub(r"\\\{(\d+)\\\}", r"{\1}", posix_pattern)
+
+    # Unescape grouping parentheses (BRE uses \( \) for grouping)
+    posix_pattern = posix_pattern.replace(r"\(", "(").replace(r"\)", ")")
+
+    return posix_pattern

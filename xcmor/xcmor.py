@@ -512,7 +512,7 @@ def _update_global_attrs(ds, dataset_table):
     return ds
 
 
-def _check_cv(ds, cv_table):
+def _check_required_global_attributes(ds, cv_table):
     cv = cv_table.get("CV") or cv_table
 
     req_attrs = cv["required_global_attributes"]
@@ -735,7 +735,7 @@ def cmorize(
 
     if cv_table:
         ds = _add_derived_attrs(ds, cv_table)
-        _check_cv(ds, cv_table)
+        _check_required_global_attributes(ds, cv_table)
 
     # sort attributes
     ds.attrs = collections.OrderedDict(sorted(ds.attrs.items()))
