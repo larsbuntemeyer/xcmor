@@ -1,4 +1,5 @@
 import collections
+import re
 from datetime import datetime, timezone
 
 # from warnings import warn
@@ -12,7 +13,7 @@ from .resources import get_project_tables
 from .rules import rules
 from .tests.tables import coords as coords_default
 from .tests.tables import grids as grids_default
-from .utils import cf_table, key_by_attr, read_tables
+from .utils import cf_table, key_by_attr, posix_to_python_regex, read_tables
 
 logger = get_logger(__name__)
 
@@ -512,7 +513,23 @@ def _update_global_attrs(ds, dataset_table):
     return ds
 
 
-def _check_cv(ds, cv_table):
+def _match_regex(s, pattern):
+    pyregex = posix_to_python_regex(pattern)
+    pattern = re.compile(pyregex)
+    return pattern.fullmatch(s)
+
+
+def _looks_like_regex(s):
+    """
+    Heuristically determine if a string looks like a regular expression.
+
+    Returns True if the string contains common regex metacharacters.
+    """
+    regex_meta = set(".^$*+?{}[]\\|()")
+    return any(c in regex_meta for c in s)
+
+
+def _check_required_global_attributes(ds, cv_table):
     cv = cv_table.get("CV") or cv_table
 
     req_attrs = cv["required_global_attributes"]
@@ -520,10 +537,20 @@ def _check_cv(ds, cv_table):
     for attr in req_attrs:
         cv_values = cv.get(attr)
         v = ds.attrs.get(attr)
+        logger.debug(f"Checking global attribute '{attr}' with value '{v}'")
         if not v:
-            logger.error(f"{attr} not found")
-        elif cv_values and v not in list(cv_values):
-            logger.error(f"value '{v[0:50]}...' for '{attr}' not in {list(cv_values)}")
+            logger.error(f"global {attr} not found but required")
+        elif not cv_values:
+            logger.debug(
+                f"Found global attribute '{attr}' with value '{v[0:50]}...' which has no specific requirements"
+            )
+        elif cv_values and v in list(cv_values):
+            logger.debug(f"Found valid value '{v[0:50]}...' for '{attr}'")
+        elif _looks_like_regex(cv_values):
+            if not _match_regex(v, cv_values):
+                logger.error(
+                    f"global attribute '{attr}' has value '{v[0:50]}...' which does not match expected regex '{cv_values}'"
+                )
 
 
 def _add_derived_attrs(ds, cv_table):
@@ -735,7 +762,7 @@ def cmorize(
 
     if cv_table:
         ds = _add_derived_attrs(ds, cv_table)
-        _check_cv(ds, cv_table)
+        _check_required_global_attributes(ds, cv_table)
 
     # sort attributes
     ds.attrs = collections.OrderedDict(sorted(ds.attrs.items()))
