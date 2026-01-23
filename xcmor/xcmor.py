@@ -546,11 +546,14 @@ def _check_required_global_attributes(ds, cv_table):
             )
         elif cv_values and v in list(cv_values):
             logger.debug(f"Found valid value '{v[0:50]}...' for '{attr}'")
-        elif _looks_like_regex(cv_values):
-            if not _match_regex(v, cv_values):
+        elif isinstance(cv_values, list) and len(cv_values) == 1 and _looks_like_regex(cv_values[0]):
+            if not _match_regex(v, cv_values[0]):
                 logger.error(
                     f"global attribute '{attr}' has value '{v[0:50]}...' which does not match expected regex '{cv_values}'"
                 )
+        elif cv_values and v not in list(cv_values):
+            logger.error(f"global attribute '{attr}' has value '{v[0:50]}...' which is not one of the valid values: {str(list(cv_values))[0:50]}...")
+
 
 
 def _add_derived_attrs(ds, cv_table):
