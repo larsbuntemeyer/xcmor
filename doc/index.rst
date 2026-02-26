@@ -52,4 +52,4 @@ or using ``conda``
    :caption: For contributors
 
    Whats New <whats-new>
-   GitHub repository <https://github.com/xarray-contrib/cf-xarray>
+   GitHub repository <https://github.com/larsbuntemeyer/xcmor/>
