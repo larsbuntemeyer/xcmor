@@ -4,18 +4,18 @@ ci:
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
-    rev: 'v0.15.9'
+    rev: 'v0.16.10'
     hooks:
       - id: ruff
         args: ["--fix"]
 
   - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 26.3.1
+    rev: 26.10.0
     hooks:
       - id: black
 
   - repo: https://github.com/rstcheck/rstcheck
-    rev: v6.2.5
+    rev: v6.3.0
     hooks:
         - id: rstcheck
           additional_dependencies: [sphinx, tomli]
@@ -61,6 +61,6 @@ repos:
     - id: validate-cff
 
   - repo: https://github.com/abravalheri/validate-pyproject
-    rev: v0.25
+    rev: '0.26'
     hooks:
       - id: validate-pyproject
